@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/Button';
 import { TextField, TextAreaField, SelectField } from '@/components/ui/Field';
 import { ESTADOS_COMPROMISO } from '@/types';
 import type { Compromiso, CategoriaCompromiso } from '@/types';
-import { responsables } from '@/data';
 
 const PRIORIDADES = ['Baja', 'Media', 'Alta', 'Urgente'] as const;
 const CATEGORIAS: CategoriaCompromiso[] = [
@@ -20,35 +19,36 @@ const CATEGORIAS: CategoriaCompromiso[] = [
 interface CompromisoFormModalProps {
   abierto: boolean;
   onCerrar: () => void;
-  onGuardar: (valores: Omit<Compromiso, 'id' | 'compania_id'>) => void;
+  onGuardar: (valores: Omit<Compromiso, 'id' | 'compania_id'> & { marcaId: string }) => void;
   acuerdoId: string;
+  marcaId: string;
   compromisoInicial?: Compromiso;
 }
 
-export function CompromisoFormModal({ abierto, onCerrar, onGuardar, acuerdoId, compromisoInicial }: CompromisoFormModalProps) {
+export function CompromisoFormModal({ abierto, onCerrar, onGuardar, acuerdoId, marcaId, compromisoInicial }: CompromisoFormModalProps) {
   const esEdicion = Boolean(compromisoInicial);
 
   const [entregable, setEntregable] = useState(compromisoInicial?.entregable ?? '');
-  const [categoria, setCategoria] = useState(compromisoInicial?.categoria ?? '');
+  const [categoria, setCategoria] = useState<CategoriaCompromiso>(compromisoInicial?.categoria ?? 'Activación');
   const [responsableId, setResponsableId] = useState(compromisoInicial?.responsableId ?? '');
   const [fechaLimite, setFechaLimite] = useState(compromisoInicial?.fechaLimite ?? '');
-  const [prioridad, setPrioridad] = useState(compromisoInicial?.prioridad ?? 'Medio');
+  const [prioridad, setPrioridad] = useState(compromisoInicial?.prioridad ?? 'Media');
   const [estado, setEstado] = useState(compromisoInicial?.estado ?? 'Pendiente');
   const [progreso, setProgreso] = useState(compromisoInicial?.progreso ?? 0);
-  const [evidenciasRequeridas, setEvidenciasRequeridas] = useState(compromisoInicial?.evidenciasRequeridas ?? 0);
+  const [evidenciasRequeridas, setEvidenciasRequeridas] = useState<number | string>(compromisoInicial?.evidenciasRequeridas ?? '');
   const [observaciones, setObservaciones] = useState(compromisoInicial?.observaciones ?? '');
 
   // Reset form when modal opens/closes
   useEffect(() => {
-    if (!abierto) {
+    if (abierto) {
       setEntregable(compromisoInicial?.entregable ?? '');
-      setCategoria(compromisoInicial?.categoria ?? '');
+      setCategoria(compromisoInicial?.categoria ?? 'Activación');
       setResponsableId(compromisoInicial?.responsableId ?? '');
       setFechaLimite(compromisoInicial?.fechaLimite ?? '');
-      setPrioridad(compromisoInicial?.prioridad ?? 'Medio');
+      setPrioridad(compromisoInicial?.prioridad ?? 'Media');
       setEstado(compromisoInicial?.estado ?? 'Pendiente');
       setProgreso(compromisoInicial?.progreso ?? 0);
-      setEvidenciasRequeridas(compromisoInicial?.evidenciasRequeridas ?? 0);
+      setEvidenciasRequeridas(compromisoInicial?.evidenciasRequeridas ?? '');
       setObservaciones(compromisoInicial?.observaciones ?? '');
     }
   }, [abierto, compromisoInicial]);
@@ -60,11 +60,11 @@ export function CompromisoFormModal({ abierto, onCerrar, onGuardar, acuerdoId, c
       alert('Por favor describe el entregable');
       return;
     }
-    if (!categoria || !categoria.trim()) {
+    if (!categoria) {
       alert('Por favor selecciona una categoría');
       return;
     }
-    if (!responsableId) {
+    if (!responsableId || !responsableId.trim()) {
       alert('Por favor selecciona un responsable');
       return;
     }
@@ -75,6 +75,7 @@ export function CompromisoFormModal({ abierto, onCerrar, onGuardar, acuerdoId, c
 
     onGuardar({
       acuerdoId,
+      marcaId,
       entregable,
       categoria,
       responsableId,
@@ -82,7 +83,7 @@ export function CompromisoFormModal({ abierto, onCerrar, onGuardar, acuerdoId, c
       prioridad,
       estado,
       progreso: Number(progreso) || 0,
-      evidenciasRequeridas: Number(evidenciasRequeridas) || 0,
+      evidenciasRequeridas: evidenciasRequeridas === '' ? 0 : Number(evidenciasRequeridas),
       observaciones,
       segmentoAudienciaId: null,
       canalAudienciaId: null,
@@ -121,11 +122,11 @@ export function CompromisoFormModal({ abierto, onCerrar, onGuardar, acuerdoId, c
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <SelectField
+          <TextField
             label="Responsable"
             value={responsableId}
             onChange={(e) => setResponsableId(e.target.value)}
-            options={responsables.map((r) => ({ value: r.id, label: r.nombre }))}
+            placeholder="Nombre del responsable"
             required
           />
           <TextField
@@ -165,9 +166,19 @@ export function CompromisoFormModal({ abierto, onCerrar, onGuardar, acuerdoId, c
             <label className="block text-sm font-medium text-gray-700">Evidencias requeridas</label>
             <input
               type="number"
-              min={0}
+              min="0"
               value={evidenciasRequeridas}
-              onChange={(e) => setEvidenciasRequeridas(Number(e.target.value))}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === '') {
+                  setEvidenciasRequeridas('');
+                } else {
+                  const num = Number(val);
+                  if (num >= 0) {
+                    setEvidenciasRequeridas(num);
+                  }
+                }
+              }}
               className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-brand-600 focus:outline-none"
             />
           </div>

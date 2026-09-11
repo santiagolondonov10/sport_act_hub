@@ -2282,18 +2282,20 @@ const server = createServer(async (request, response) => {
         // Constraints might already be removed
       }
 
+      const compromisoId = `compromiso-${Date.now()}`;
       const result = await pool.query(
-        `INSERT INTO compromisos (acuerdo_id, entregable, categoria, responsable_id, fecha_limite, prioridad, estado, progreso, evidencias_requeridas, observaciones, compania_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-         RETURNING id, acuerdo_id AS "acuerdoId", entregable, categoria, responsable_id AS "responsableId", fecha_limite AS "fechaLimite", prioridad, estado, progreso, evidencias_requeridas AS "evidenciasRequeridas", observaciones`,
-        [body.acuerdoId, body.entregable, body.categoria, body.responsableId, body.fechaLimite, body.prioridad, body.estado, body.progreso, body.evidenciasRequeridas, body.observaciones, companiaId]
+        `INSERT INTO compromisos (id, acuerdo_id, marca_id, entregable, categoria, responsable_id, fecha_limite, prioridad, estado, progreso, evidencias_requeridas, observaciones, compania_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+         RETURNING id, acuerdo_id AS "acuerdoId", marca_id AS "marcaId", entregable, categoria, responsable_id AS "responsableId", fecha_limite AS "fechaLimite", prioridad, estado, progreso, evidencias_requeridas AS "evidenciasRequeridas", observaciones`,
+        [compromisoId, body.acuerdoId, body.marcaId, body.entregable, body.categoria, body.responsableId, body.fechaLimite, body.prioridad, body.estado, body.progreso, body.evidenciasRequeridas, body.observaciones, companiaId]
       );
 
       sendJson(response, 201, result.rows[0]);
       return;
     } catch (error) {
-      console.error('Error creating compromiso:', error);
-      sendJson(response, 500, { error: 'No fue posible crear el compromiso.' });
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error('Error creating compromiso:', errorMsg);
+      sendJson(response, 500, { error: errorMsg || 'No fue posible crear el compromiso.' });
       return;
     }
   }

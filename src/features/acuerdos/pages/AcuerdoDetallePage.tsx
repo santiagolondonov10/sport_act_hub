@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { CheckCircle2, FileSignature, Mail, Phone, RefreshCcw, User, Pencil, Trash2, Plus } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -23,7 +23,7 @@ export function AcuerdoDetallePage() {
   const { acuerdoId } = useParams<{ acuerdoId: string }>();
   const { mostrarToast } = useToast();
   const [renovacionSolicitada, setRenovacionSolicitada] = useState(false);
-  const { acuerdos, eliminarAcuerdo } = useAcuerdos();
+  const { acuerdos, eliminarAcuerdo, recargarAcuerdos } = useAcuerdos();
   const { marcas } = useMarcas();
   const { activos } = useActivos();
   const { compromisos, crearCompromiso, actualizarCompromiso, eliminarCompromiso } = useCompromisos();
@@ -33,6 +33,13 @@ export function AcuerdoDetallePage() {
   const [eliminando, setEliminando] = useState(false);
 
   const acuerdo = acuerdoId ? acuerdos.find((a) => a.id === acuerdoId) : undefined;
+
+  // If acuerdo not found locally, try to reload from API
+  useEffect(() => {
+    if (acuerdoId && !acuerdo) {
+      recargarAcuerdos();
+    }
+  }, [acuerdoId]);
 
   if (!acuerdo) {
     return (
@@ -300,7 +307,8 @@ export function AcuerdoDetallePage() {
               setCompromisoEditando(null);
             }}
             acuerdoId={acuerdo.id}
-            compromisoInicial={compromisoEditando ? compromisos.find((c) => c.id === compromisoEditando) : undefined}
+            marcaId={acuerdo.marcaId}
+            compromisoInicial={compromisoEditando ? compromisosAcuerdo.find((c) => c.id === compromisoEditando) : undefined}
             onGuardar={async (valores) => {
               try {
                 if (compromisoEditando) {

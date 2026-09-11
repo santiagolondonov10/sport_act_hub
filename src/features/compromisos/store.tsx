@@ -79,7 +79,10 @@ export function CompromisosProvider({ children }: { children: ReactNode }) {
       headers,
       body: JSON.stringify(nuevo),
     });
-    if (!response.ok) throw new Error('No fue posible crear el compromiso.');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'No fue posible crear el compromiso.');
+    }
     const compromiso = await response.json();
     setCompromisos((prev) => [...prev, compromiso]);
     return compromiso;
