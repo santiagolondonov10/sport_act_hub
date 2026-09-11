@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { CheckCircle2, FileSignature, Mail, Phone, RefreshCcw, User, Pencil, Trash2 } from 'lucide-react';
+import { CheckCircle2, FileSignature, Mail, Phone, RefreshCcw, User, Pencil, Trash2, Plus } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -16,6 +16,7 @@ import { useMarcas } from '@/features/marcas/store';
 import { useActivos } from '@/features/activos/store';
 import { useCompromisos } from '@/features/compromisos/store';
 import { EditarAcuerdoModal } from '../components/EditarAcuerdoModal';
+import { CompromisoFormModal } from '@/features/compromisos/components/CompromisoFormModal';
 
 export function AcuerdoDetallePage() {
   const navigate = useNavigate();
@@ -25,8 +26,10 @@ export function AcuerdoDetallePage() {
   const { acuerdos, eliminarAcuerdo } = useAcuerdos();
   const { marcas } = useMarcas();
   const { activos } = useActivos();
-  const { compromisos } = useCompromisos();
+  const { compromisos, crearCompromiso, actualizarCompromiso, eliminarCompromiso } = useCompromisos();
   const [modalEditarAbierto, setModalEditarAbierto] = useState(false);
+  const [modalCompromisoAbierto, setModalCompromisoAbierto] = useState(false);
+  const [compromisoEditando, setCompromisoEditando] = useState<string | null>(null);
   const [eliminando, setEliminando] = useState(false);
 
   const acuerdo = acuerdoId ? acuerdos.find((a) => a.id === acuerdoId) : undefined;
@@ -155,9 +158,17 @@ export function AcuerdoDetallePage() {
               title="Compromisos relacionados"
               description={`${compromisosAcuerdo.length} compromiso(s) asociados a este acuerdo`}
               action={
-                <Link to="/compromisos" className="text-xs font-medium text-brand-800 hover:underline">
-                  Ver todos
-                </Link>
+                <Button
+                  variante="secundario"
+                  icono={<Plus size={14} />}
+                  onClick={() => {
+                    setCompromisoEditando(null);
+                    setModalCompromisoAbierto(true);
+                  }}
+                  className="text-xs"
+                >
+                  Crear
+                </Button>
               }
             />
             <CardContent>
@@ -167,11 +178,40 @@ export function AcuerdoDetallePage() {
                 <ul className="divide-y divide-gray-100">
                   {compromisosAcuerdo.map((c) => (
                     <li key={c.id} className="flex items-center justify-between gap-3 py-2.5">
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-gray-800">{c.entregable}</p>
                         <p className="text-xs text-gray-500">Vence {formatFecha(c.fechaLimite)}</p>
                       </div>
-                      <Badge estado={c.estado} />
+                      <div className="flex items-center gap-2">
+                        <Badge estado={c.estado} />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCompromisoEditando(c.id);
+                            setModalCompromisoAbierto(true);
+                          }}
+                          className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                          title="Editar"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!confirm('¿Estás seguro de que quieres eliminar este compromiso?')) return;
+                            try {
+                              await eliminarCompromiso(c.id);
+                              mostrarToast('Compromiso eliminado correctamente.');
+                            } catch (error) {
+                              mostrarToast(error instanceof Error ? error.message : 'Error al eliminar el compromiso.');
+                            }
+                          }}
+                          className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-danger-600"
+                          title="Eliminar"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -247,11 +287,35 @@ export function AcuerdoDetallePage() {
       </div>
 
       {acuerdo && (
-        <EditarAcuerdoModal
-          abierto={modalEditarAbierto}
-          onCerrar={() => setModalEditarAbierto(false)}
-          acuerdo={acuerdo}
-        />
+        <>
+          <EditarAcuerdoModal
+            abierto={modalEditarAbierto}
+            onCerrar={() => setModalEditarAbierto(false)}
+            acuerdo={acuerdo}
+          />
+          <CompromisoFormModal
+            abierto={modalCompromisoAbierto}
+            onCerrar={() => {
+              setModalCompromisoAbierto(false);
+              setCompromisoEditando(null);
+            }}
+            acuerdoId={acuerdo.id}
+            compromisoInicial={compromisoEditando ? compromisos.find((c) => c.id === compromisoEditando) : undefined}
+            onGuardar={async (valores) => {
+              try {
+                if (compromisoEditando) {
+                  await actualizarCompromiso(compromisoEditando, valores);
+                  mostrarToast('Compromiso actualizado correctamente.');
+                } else {
+                  await crearCompromiso(valores);
+                  mostrarToast('Compromiso creado correctamente.');
+                }
+              } catch (error) {
+                mostrarToast(error instanceof Error ? error.message : 'Error al guardar el compromiso.');
+              }
+            }}
+          />
+        </>
       )}
     </div>
   );
