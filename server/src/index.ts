@@ -2387,6 +2387,10 @@ const server = createServer(async (request, response) => {
         updateFields.push(`observaciones = $${paramIndex++}`);
         updateValues.splice(-1, 0, body.observaciones);
       }
+      if (body.marcaId !== undefined && body.marcaId) {
+        updateFields.push(`marca_id = $${paramIndex++}`);
+        updateValues.splice(-1, 0, body.marcaId);
+      }
 
       if (updateFields.length === 0) {
         sendJson(response, 400, { error: 'No hay cambios para actualizar.' });
@@ -2396,7 +2400,7 @@ const server = createServer(async (request, response) => {
       const result = await pool.query(
         `UPDATE compromisos SET ${updateFields.join(', ')}
          WHERE id = $1 AND compania_id = $2
-         RETURNING id, acuerdo_id AS "acuerdoId", entregable, categoria, responsable_id AS "responsableId",
+         RETURNING id, acuerdo_id AS "acuerdoId", marca_id AS "marcaId", entregable, categoria, responsable_id AS "responsableId",
                    TO_CHAR(fecha_limite, 'YYYY-MM-DD') AS "fechaLimite", prioridad, estado, progreso,
                    evidencias_requeridas AS "evidenciasRequeridas", observaciones`,
         updateValues
@@ -2450,8 +2454,8 @@ const server = createServer(async (request, response) => {
     }
   }
 
-  // Servir archivos estáticos del frontend
-  if (request.method === 'GET') {
+  // Servir archivos estáticos del frontend (pero NO para /api requests)
+  if (request.method === 'GET' && !request.url?.startsWith('/api')) {
     (async () => {
       let filePath = decodeURIComponent(request.url?.split('?')[0] || '/');
       if (filePath === '/') filePath = '/index.html';
@@ -2492,6 +2496,167 @@ const server = createServer(async (request, response) => {
       }
     })();
     return;
+  }
+
+  // GET /api/evidencias - Get all evidencias for a company
+  if (request.method === 'GET' && request.url === '/api/evidencias') {
+    try {
+      const userId = request.headers['x-user-id'];
+      if (typeof userId !== 'string' || !userId) {
+        sendJson(response, 401, { error: 'Se requiere autenticación.' });
+        return;
+      }
+      const companiaId = await getUserCompaniaId(userId);
+      if (!companiaId) {
+        sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
+        return;
+      }
+
+      const result = await pool.query(
+        `SELECT id, compromiso_id AS "compromisoId", acuerdo_id AS "acuerdoId", tipo, titulo, descripcion,
+                TO_CHAR(fecha_ejecucion, 'YYYY-MM-DD') AS "fechaEjecucion", ubicacion_canal AS "ubicacionCanal",
+                responsable_id AS "responsableId", estado, color_preview AS "colorPreview", archivos
+         FROM evidencias WHERE compania_id = $1 ORDER BY fecha_ejecucion DESC`,
+        [companiaId]
+      );
+
+      sendJson(response, 200, result.rows);
+      return;
+    } catch (error) {
+      console.error('Error getting evidencias:', error);
+      sendJson(response, 500, { error: 'No fue posible obtener las evidencias.' });
+      return;
+    }
+  }
+
+  // POST /api/evidencias - Create a new evidencia
+  if (request.method === 'POST' && request.url === '/api/evidencias') {
+    try {
+      console.log('POST /api/evidencias received');
+      const userId = request.headers['x-user-id'];
+      if (typeof userId !== 'string' || !userId) {
+        console.log('No user ID');
+        sendJson(response, 401, { error: 'Se requiere autenticación.' });
+        return;
+      }
+      const companiaId = await getUserCompaniaId(userId);
+      if (!companiaId) {
+        console.log('No compania ID for user:', userId);
+        sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
+        return;
+      }
+      const body = await readJson(request) as any;
+      console.log('Request body:', JSON.stringify(body, null, 2));
+
+      const evidenciaId = `evidencia-${Date.now()}`;
+      const archivos = body.archivos ? JSON.stringify(body.archivos) : JSON.stringify([]);
+
+      console.log('Inserting evidencia with ID:', evidenciaId);
+      const result = await pool.query(
+        `INSERT INTO evidencias (id, compromiso_id, acuerdo_id, tipo, titulo, descripcion, fecha_ejecucion, ubicacion_canal, responsable_id, compania_id, archivos, estado, color_preview)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::uuid, $11, $12, $13)
+         RETURNING id, compromiso_id AS "compromisoId", acuerdo_id AS "acuerdoId", tipo, titulo, descripcion,
+                   TO_CHAR(fecha_ejecucion, 'YYYY-MM-DD') AS "fechaEjecucion", ubicacion_canal AS "ubicacionCanal",
+                   responsable_id AS "responsableId", estado, color_preview AS "colorPreview", archivos`,
+        [evidenciaId, body.compromisoId, body.acuerdoId, body.tipo, body.titulo, body.descripcion, body.fechaEjecucion, body.ubicacionCanal, body.responsableId, companiaId, archivos, 'En revisión', body.colorPreview]
+      );
+
+      console.log('Evidencia created successfully:', evidenciaId);
+      sendJson(response, 201, result.rows[0]);
+      return;
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error('Error creating evidencia:', errorMsg);
+      sendJson(response, 500, { error: errorMsg || 'No fue posible crear la evidencia.' });
+      return;
+    }
+  }
+
+  // PATCH /api/evidencias/:id - Update evidencia
+  if (request.method === 'PATCH' && request.url?.startsWith('/api/evidencias/')) {
+    try {
+      const userId = request.headers['x-user-id'];
+      if (typeof userId !== 'string' || !userId) {
+        sendJson(response, 401, { error: 'Se requiere autenticación.' });
+        return;
+      }
+      const companiaId = await getUserCompaniaId(userId);
+      if (!companiaId) {
+        sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
+        return;
+      }
+      const id = request.url.split('/')[3];
+      const body = await readJson(request) as any;
+
+      // Build dynamic UPDATE query based on provided fields
+      const updates: string[] = [];
+      const values: any[] = [];
+      let paramIndex = 1;
+
+      if (body.tipo !== undefined) {
+        updates.push(`tipo = $${paramIndex}`);
+        values.push(body.tipo);
+        paramIndex++;
+      }
+      if (body.titulo !== undefined) {
+        updates.push(`titulo = $${paramIndex}`);
+        values.push(body.titulo);
+        paramIndex++;
+      }
+      if (body.descripcion !== undefined) {
+        updates.push(`descripcion = $${paramIndex}`);
+        values.push(body.descripcion);
+        paramIndex++;
+      }
+      if (body.fechaEjecucion !== undefined) {
+        updates.push(`fecha_ejecucion = $${paramIndex}`);
+        values.push(body.fechaEjecucion);
+        paramIndex++;
+      }
+      if (body.ubicacionCanal !== undefined) {
+        updates.push(`ubicacion_canal = $${paramIndex}`);
+        values.push(body.ubicacionCanal);
+        paramIndex++;
+      }
+      if (body.archivos !== undefined) {
+        updates.push(`archivos = $${paramIndex}`);
+        values.push(JSON.stringify(body.archivos));
+        paramIndex++;
+      }
+      if (body.estado !== undefined) {
+        updates.push(`estado = $${paramIndex}`);
+        values.push(body.estado);
+        paramIndex++;
+      }
+
+      if (updates.length === 0) {
+        sendJson(response, 400, { error: 'No fields to update.' });
+        return;
+      }
+
+      values.push(id);
+      values.push(companiaId);
+
+      const result = await pool.query(
+        `UPDATE evidencias SET ${updates.join(', ')} WHERE id = $${paramIndex} AND compania_id = $${paramIndex + 1}
+         RETURNING id, compromiso_id AS "compromisoId", acuerdo_id AS "acuerdoId", tipo, titulo, descripcion,
+                   TO_CHAR(fecha_ejecucion, 'YYYY-MM-DD') AS "fechaEjecucion", ubicacion_canal AS "ubicacionCanal",
+                   responsable_id AS "responsableId", estado, color_preview AS "colorPreview", archivos`,
+        values
+      );
+
+      if (result.rowCount === 0) {
+        sendJson(response, 404, { error: 'Evidencia no encontrada.' });
+        return;
+      }
+
+      sendJson(response, 200, result.rows[0]);
+      return;
+    } catch (error) {
+      console.error('Error updating evidencia:', error);
+      sendJson(response, 500, { error: 'No fue posible actualizar la evidencia.' });
+      return;
+    }
   }
 
   sendJson(response, 404, { error: 'Not found' });

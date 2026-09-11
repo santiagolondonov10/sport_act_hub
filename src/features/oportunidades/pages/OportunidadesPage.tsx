@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useLanguage } from '@/lib/LanguageContext';
 import type { Oportunidad } from '@/types';
-import { formatCOP, formatCOPCompact, formatFecha, formatPorcentaje } from '@/lib/format';
+import { formatCOP, formatCOPCompact, formatFecha } from '@/lib/format';
 import { getResponsable, responsables } from '@/data';
 import { useOportunidades } from '../store';
 import { useToast } from '@/hooks/useToast';

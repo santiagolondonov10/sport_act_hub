@@ -9,8 +9,9 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { useLanguage } from '@/lib/LanguageContext';
 import { TIPOS_EVIDENCIA } from '@/types';
 import type { Evidencia, EstadoEvidencia } from '@/types';
-import { acuerdos, marcas } from '@/data';
 import { useEvidencias } from '../store';
+import { useAcuerdos } from '@/features/acuerdos/store';
+import { useMarcas } from '@/features/marcas/store';
 import { useToast } from '@/hooks/useToast';
 import { EvidenciaCard } from '../components/EvidenciaCard';
 import { EvidenciaFormModal } from '../components/EvidenciaFormModal';
@@ -20,7 +21,9 @@ const ESTADOS: EstadoEvidencia[] = ['En revisión', 'Aprobada', 'Rechazada'];
 
 export function EvidenciasPage() {
   const { t } = useLanguage();
-  const { evidencias, crearEvidencia, cambiarEstado } = useEvidencias();
+  const { evidencias, crearEvidencia, actualizarEvidencia, cambiarEstado } = useEvidencias();
+  const { acuerdos } = useAcuerdos();
+  const { marcas } = useMarcas();
   const { mostrarToast } = useToast();
 
   const [busqueda, setBusqueda] = useState('');
@@ -29,6 +32,7 @@ export function EvidenciasPage() {
   const [estado, setEstado] = useState('todos');
   const [modalCrearAbierto, setModalCrearAbierto] = useState(false);
   const [seleccionada, setSeleccionada] = useState<Evidencia | null>(null);
+  const [evidenciaEditando, setEvidenciaEditando] = useState<Evidencia | null>(null);
 
   const filtradas = useMemo(() => {
     return evidencias.filter((e) => {
@@ -46,9 +50,26 @@ export function EvidenciasPage() {
   const enRevision = evidencias.filter((e) => e.estado === 'En revisión').length;
   const rechazadas = evidencias.filter((e) => e.estado === 'Rechazada').length;
 
-  function handleCrear(valores: Omit<Evidencia, 'id' | 'estado'>) {
-    crearEvidencia(valores);
-    mostrarToast(t('message.evidenciaRegistrada'));
+  async function handleGuardar(valores: Omit<Evidencia, 'id' | 'estado'>) {
+    try {
+      if (evidenciaEditando) {
+        await actualizarEvidencia(evidenciaEditando.id, valores);
+        mostrarToast(t('message.evidenciaActualizada'));
+        setEvidenciaEditando(null);
+      } else {
+        await crearEvidencia(valores);
+        mostrarToast(t('message.evidenciaRegistrada'));
+      }
+      setModalCrearAbierto(false);
+    } catch (error) {
+      const mensaje = error instanceof Error ? error.message : 'No fue posible guardar la evidencia.';
+      mostrarToast(mensaje, 'error');
+    }
+  }
+
+  function handleEditar(evidencia: Evidencia) {
+    setEvidenciaEditando(evidencia);
+    setModalCrearAbierto(true);
   }
 
   function handleCambiarEstado(id: string, nuevoEstado: EstadoEvidencia) {
@@ -117,8 +138,21 @@ export function EvidenciasPage() {
         </div>
       )}
 
-      <EvidenciaFormModal abierto={modalCrearAbierto} onCerrar={() => setModalCrearAbierto(false)} onGuardar={handleCrear} />
-      <EvidenciaDetalleModal evidencia={seleccionada} onCerrar={() => setSeleccionada(null)} onCambiarEstado={handleCambiarEstado} />
+      <EvidenciaFormModal
+        abierto={modalCrearAbierto}
+        onCerrar={() => {
+          setModalCrearAbierto(false);
+          setEvidenciaEditando(null);
+        }}
+        onGuardar={handleGuardar}
+        evidenciaInicial={evidenciaEditando || undefined}
+      />
+      <EvidenciaDetalleModal
+        evidencia={seleccionada}
+        onCerrar={() => setSeleccionada(null)}
+        onCambiarEstado={handleCambiarEstado}
+        onEditar={handleEditar}
+      />
     </div>
   );
 }

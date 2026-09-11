@@ -1,22 +1,135 @@
-import { createEntityStore } from '@/lib/createEntityStore';
+import { createContext, useContext, useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
+import { authHeaders, getSessionUser } from '@/lib/auth';
 import type { Evidencia, EstadoEvidencia } from '@/types';
 
-const { Provider, useEntityStore } = createEntityStore<Evidencia>([]);
+interface EvidenciasContextValue {
+  evidencias: Evidencia[];
+  crearEvidencia: (nueva: Omit<Evidencia, 'id' | 'estado'> & { archivos?: Array<{ nombre: string; tipo: string; datos: string }> }) => Promise<Evidencia>;
+  actualizarEvidencia: (id: string, updates: Partial<Omit<Evidencia, 'id' | 'estado'>> & { archivos?: Array<{ nombre: string; tipo: string; datos: string }> }) => Promise<Evidencia>;
+  cambiarEstado: (id: string, estado: EstadoEvidencia) => Promise<void>;
+  loading: boolean;
+}
 
-export const EvidenciasProvider = Provider;
+const EvidenciasContext = createContext<EvidenciasContextValue | null>(null);
 
-export function useEvidencias() {
-  const { items, setItems } = useEntityStore();
+export function EvidenciasProvider({ children }: { children: ReactNode }) {
+  const [evidencias, setEvidencias] = useState<Evidencia[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  function crearEvidencia(nueva: Omit<Evidencia, 'id' | 'estado'>) {
-    const id = `ev-${Date.now()}`;
-    setItems((prev) => [{ ...nueva, id, estado: 'En revisión' as EstadoEvidencia }, ...prev]);
-    return id;
+  const recargarEvidencias = async () => {
+    try {
+      const user = getSessionUser();
+      if (!user) {
+        setEvidencias([]);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      const headers = new Headers();
+      const auth = authHeaders();
+      Object.entries(auth).forEach(([key, value]) => {
+        if (value) headers.set(key, value);
+      });
+      const response = await fetch(`/api/evidencias`, { headers });
+      if (response.ok) {
+        const data = await response.json();
+        setEvidencias(data);
+      } else {
+        setEvidencias([]);
+      }
+    } catch (error) {
+      console.error('Error loading evidencias:', error);
+      setEvidencias([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    recargarEvidencias();
+  }, [getSessionUser()?.id]);
+
+  async function crearEvidencia(nueva: Omit<Evidencia, 'id' | 'estado'> & { archivos?: Array<{ nombre: string; tipo: string; datos: string }> }): Promise<Evidencia> {
+    const headers = new Headers();
+    headers.set('Content-Type', 'application/json');
+    const auth = authHeaders();
+    Object.entries(auth).forEach(([key, value]) => {
+      if (value) headers.set(key, value);
+    });
+    const response = await fetch(`/api/evidencias`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(nueva),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'No fue posible crear la evidencia.');
+    }
+    const evidencia = await response.json();
+    setEvidencias((prev) => [evidencia, ...prev]);
+    return evidencia;
   }
 
-  function cambiarEstado(id: string, estado: EstadoEvidencia) {
-    setItems((prev) => prev.map((e) => (e.id === id ? { ...e, estado } : e)));
+  async function actualizarEvidencia(
+    id: string,
+    updates: Partial<Omit<Evidencia, 'id' | 'estado'>> & { archivos?: Array<{ nombre: string; tipo: string; datos: string }> }
+  ): Promise<Evidencia> {
+    const headers = new Headers();
+    headers.set('Content-Type', 'application/json');
+    const auth = authHeaders();
+    Object.entries(auth).forEach(([key, value]) => {
+      if (value) headers.set(key, value);
+    });
+    const response = await fetch(`/api/evidencias/${id}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify(updates),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'No fue posible actualizar la evidencia.');
+    }
+    const evidencia = await response.json();
+    setEvidencias((prev) => prev.map((e) => (e.id === id ? evidencia : e)));
+    return evidencia;
   }
 
-  return { evidencias: items, crearEvidencia, cambiarEstado };
+  async function cambiarEstado(id: string, estado: EstadoEvidencia) {
+    const headers = new Headers();
+    headers.set('Content-Type', 'application/json');
+    const auth = authHeaders();
+    Object.entries(auth).forEach(([key, value]) => {
+      if (value) headers.set(key, value);
+    });
+    const response = await fetch(`/api/evidencias/${id}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ estado }),
+    });
+    if (!response.ok) throw new Error('No fue posible actualizar el estado de la evidencia.');
+    const evidencia = await response.json();
+    setEvidencias((prev) => prev.map((e) => (e.id === id ? evidencia : e)));
+  }
+
+  return (
+    <EvidenciasContext.Provider
+      value={{
+        evidencias,
+        crearEvidencia,
+        actualizarEvidencia,
+        cambiarEstado,
+        loading,
+      }}
+    >
+      {children}
+    </EvidenciasContext.Provider>
+  );
+}
+
+export function useEvidencias(): EvidenciasContextValue {
+  const context = useContext(EvidenciasContext);
+  if (!context) throw new Error('useEvidencias must be used within EvidenciasProvider');
+  return context;
 }

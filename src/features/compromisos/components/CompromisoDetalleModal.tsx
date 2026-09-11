@@ -14,9 +14,11 @@ interface CompromisoDetalleModalProps {
   compromiso: Compromiso | null;
   onCerrar: () => void;
   onCambiarEstado: (id: string, estado: EstadoCompromiso) => void;
+  onEditar?: (compromiso: Compromiso) => void;
+  onEliminar?: (id: string) => void;
 }
 
-export function CompromisoDetalleModal({ compromiso, onCerrar, onCambiarEstado }: CompromisoDetalleModalProps) {
+export function CompromisoDetalleModal({ compromiso, onCerrar, onCambiarEstado, onEditar, onEliminar }: CompromisoDetalleModalProps) {
   if (!compromiso) return null;
 
   const { acuerdos } = useAcuerdos();
@@ -153,6 +155,32 @@ export function CompromisoDetalleModal({ compromiso, onCerrar, onCambiarEstado }
               </option>
             ))}
           </select>
+        </div>
+
+        <div className="flex gap-2 border-t border-gray-100 pt-4">
+          {onEditar && (
+            <button
+              type="button"
+              onClick={() => onEditar(compromiso)}
+              className="flex-1 rounded-lg bg-brand-800 px-4 py-2 text-sm font-medium text-white hover:bg-brand-900"
+            >
+              Editar
+            </button>
+          )}
+          {onEliminar && (
+            <button
+              type="button"
+              onClick={() => {
+                if (confirm('¿Estás seguro de que quieres eliminar este compromiso?')) {
+                  onEliminar(compromiso.id);
+                  onCerrar();
+                }
+              }}
+              className="flex-1 rounded-lg bg-danger-500 px-4 py-2 text-sm font-medium text-white hover:bg-danger-700"
+            >
+              Eliminar
+            </button>
+          )}
         </div>
       </div>
     </Modal>

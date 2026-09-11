@@ -6,10 +6,9 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { ProgressBar } from '@/components/ui/ProgressBar';
 import { ETAPAS_OPORTUNIDAD } from '@/types';
 import type { Oportunidad } from '@/types';
-import { formatCOP, formatFecha, formatFechaLarga, iniciales } from '@/lib/format';
+import { formatCOP, formatFecha, formatFechaLarga } from '@/lib/format';
 import { useOportunidades } from '../store';
 import { useToast } from '@/hooks/useToast';
 import { OportunidadFormModal } from '../components/OportunidadFormModal';
@@ -647,7 +646,7 @@ export function OportunidadDetallePage() {
           <Card>
             <CardHeader title="Responsable interno" />
             <CardContent className="space-y-3">
-              <div className="flex items-start gap-3">
+              {/* <div className="flex items-start gap-3">
                 <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white bg-amber-500">
                   {iniciales(oportunidad.responsableInternoNombre || 'RI')}
                 </span>
@@ -664,7 +663,8 @@ export function OportunidadDetallePage() {
                   <span className="text-gray-500">Teléfono</span>
                   <span className="text-gray-700">{oportunidad.responsableInternoTelefono || '-'}</span>
                 </div>
-              </div>
+              </div> */}
+              <p className="text-gray-500 text-sm">Información del responsable interno no disponible</p>
             </CardContent>
           </Card>
 

@@ -1,35 +1,57 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, ExternalLink, X } from 'lucide-react';
+import { Check, Download, Edit2, X } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { formatFechaLarga } from '@/lib/format';
-import { campanasAudiencia, getAcuerdo, getMarca, getResponsable } from '@/data';
+import { useAcuerdos } from '@/features/acuerdos/store';
+import { useMarcas } from '@/features/marcas/store';
 import type { Evidencia, EstadoEvidencia } from '@/types';
 
 interface EvidenciaDetalleModalProps {
   evidencia: Evidencia | null;
   onCerrar: () => void;
   onCambiarEstado: (id: string, estado: EstadoEvidencia) => void;
+  onEditar?: (evidencia: Evidencia) => void;
 }
 
-export function EvidenciaDetalleModal({ evidencia, onCerrar, onCambiarEstado }: EvidenciaDetalleModalProps) {
+const TIPOS_IMAGEN = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+export function EvidenciaDetalleModal({ evidencia, onCerrar, onCambiarEstado, onEditar }: EvidenciaDetalleModalProps) {
+  const [imagenAmpliada, setImagenAmpliada] = useState<{ nombre: string; tipo: string; datos: string } | null>(null);
+
   if (!evidencia) return null;
 
-  const acuerdo = getAcuerdo(evidencia.acuerdoId);
-  const marca = acuerdo ? getMarca(acuerdo.marcaId) : undefined;
-  const responsable = getResponsable(evidencia.responsableId);
-  const campana = campanasAudiencia.find((c) => c.id === evidencia.campanaAudienciaId);
+  const { acuerdos } = useAcuerdos();
+  const { marcas } = useMarcas();
+
+  const acuerdo = acuerdos.find((a) => a.id === evidencia.acuerdoId);
+  const marca = acuerdo ? marcas.find((m) => m.id === acuerdo.marcaId) : undefined;
+  const primeraImagen = evidencia.archivos?.find((a) => TIPOS_IMAGEN.includes(a.tipo));
+  const puedeEditar = evidencia.estado === 'En revisión';
 
   return (
-    <Modal abierto={Boolean(evidencia)} onCerrar={onCerrar} titulo={evidencia.titulo} descripcion={`${evidencia.tipo} · ${marca?.nombre}`}>
-      <div className="space-y-4">
-        <div
-          className="flex h-32 items-center justify-center rounded-lg text-sm font-medium"
-          style={{ backgroundColor: `${evidencia.colorPreview}1a`, color: evidencia.colorPreview }}
-        >
-          Vista previa de demostración
-        </div>
+    <>
+      <Modal abierto={Boolean(evidencia) && !imagenAmpliada} onCerrar={onCerrar} titulo={evidencia.titulo} descripcion={`${evidencia.tipo} · ${marca?.nombre}`}>
+        <div className="space-y-4">
+          <div
+            className="h-48 rounded-lg overflow-hidden bg-gray-100 cursor-pointer hover:opacity-90 transition-opacity"
+            style={{ backgroundColor: `${evidencia.colorPreview}1a` }}
+            onClick={() => primeraImagen && setImagenAmpliada(primeraImagen)}
+          >
+            {primeraImagen ? (
+              <img
+                src={`data:${primeraImagen.tipo};base64,${primeraImagen.datos}`}
+                alt={primeraImagen.nombre}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm font-medium" style={{ color: evidencia.colorPreview }}>
+                Sin vista previa de imagen
+              </div>
+            )}
+          </div>
 
         <Badge estado={evidencia.estado} />
 
@@ -46,33 +68,69 @@ export function EvidenciaDetalleModal({ evidencia, onCerrar, onCambiarEstado }: 
           </div>
           <div>
             <p className="text-xs text-gray-500">Responsable</p>
-            <p className="font-medium text-gray-900">{responsable?.nombre}</p>
+            <p className="font-medium text-gray-900">{evidencia.responsableId || '-'}</p>
           </div>
           <div>
             <p className="text-xs text-gray-500">Acuerdo</p>
-            {acuerdo && (
+            {acuerdo ? (
               <Link to={`/acuerdos/${acuerdo.id}`} className="font-medium text-brand-800 hover:underline">
                 {acuerdo.nombre}
               </Link>
+            ) : (
+              <p className="font-medium text-gray-900">-</p>
             )}
           </div>
         </div>
 
-        {campana && (
-          <Link to="/audiencias" className="block rounded-lg bg-info-50 px-3 py-2 text-xs font-medium text-info-700 hover:underline">
-            Campaña de audiencia relacionada: {campana.nombre}
-          </Link>
+        {evidencia.archivos && evidencia.archivos.length > 0 && (
+          <div className="border-t border-gray-100 pt-4">
+            <p className="text-xs font-medium text-gray-700 mb-2">Archivos adjuntos ({evidencia.archivos.length})</p>
+            <ul className="space-y-2">
+              {evidencia.archivos.map((archivo, idx) => (
+                <li
+                  key={idx}
+                  className="flex items-center justify-between text-xs bg-gray-50 px-3 py-2 rounded-lg"
+                >
+                  <span className="truncate text-gray-700">{archivo.nombre}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const link = document.createElement('a');
+                      link.href = `data:${archivo.tipo};base64,${archivo.datos}`;
+                      link.download = archivo.nombre;
+                      link.click();
+                    }}
+                    className="ml-2 text-gray-400 hover:text-gray-600"
+                    title="Descargar"
+                  >
+                    <Download size={14} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
 
-        {evidencia.url && (
-          <a
-            href={evidencia.url}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-1.5 text-sm font-medium text-brand-800 hover:underline"
+        {puedeEditar && onEditar && (
+          <Button
+            variante="secundario"
+            icono={<Edit2 size={15} />}
+            onClick={() => {
+              onEditar(evidencia);
+              onCerrar();
+            }}
+            className="w-full"
           >
-            <ExternalLink size={14} /> Abrir enlace de referencia
-          </a>
+            Editar evidencia
+          </Button>
+        )}
+
+        {!puedeEditar && (
+          <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
+            <p className="text-xs text-amber-800">
+              Esta evidencia ya no puede ser editada. Crea una nueva si necesitas hacer cambios.
+            </p>
+          </div>
         )}
 
         {evidencia.estado === 'En revisión' && (
@@ -97,5 +155,42 @@ export function EvidenciaDetalleModal({ evidencia, onCerrar, onCambiarEstado }: 
         )}
       </div>
     </Modal>
+
+      {imagenAmpliada && (
+        <div
+          className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-4"
+          onClick={() => setImagenAmpliada(null)}
+        >
+          <div className="max-w-4xl max-h-screen flex flex-col gap-4">
+            <img
+              src={`data:${imagenAmpliada.tipo};base64,${imagenAmpliada.datos}`}
+              alt={imagenAmpliada.nombre}
+              className="max-h-[80vh] w-auto mx-auto object-contain"
+            />
+            <div className="flex justify-between items-center">
+              <p className="text-sm text-white">{imagenAmpliada.nombre}</p>
+              <Button
+                variante="secundario"
+                onClick={() => {
+                  const link = document.createElement('a');
+                  link.href = `data:${imagenAmpliada.tipo};base64,${imagenAmpliada.datos}`;
+                  link.download = imagenAmpliada.nombre;
+                  link.click();
+                }}
+                className="text-white"
+              >
+                Descargar
+              </Button>
+            </div>
+            <button
+              onClick={() => setImagenAmpliada(null)}
+              className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors"
+            >
+              <X size={24} />
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

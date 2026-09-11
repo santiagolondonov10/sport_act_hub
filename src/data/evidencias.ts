@@ -96,7 +96,6 @@ export const evidencias: Evidencia[] = [
     responsableId: 'resp-02',
     estado: 'Aprobada',
     colorPreview: '#7c3aed',
-    url: 'https://instagram.com/p/ejemplo-conecta-movil',
   },
   {
     id: 'ev-08',
@@ -123,7 +122,6 @@ export const evidencias: Evidencia[] = [
     responsableId: 'resp-02',
     estado: 'Aprobada',
     colorPreview: '#7c3aed',
-    url: 'https://instagram.com/stories/highlights/conecta-movil',
   },
   {
     id: 'ev-10',

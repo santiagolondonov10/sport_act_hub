@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/Button';
 import { TextField, TextAreaField, SelectField } from '@/components/ui/Field';
 import { ETAPAS_OPORTUNIDAD } from '@/types';
 import type { Oportunidad } from '@/types';
-import { responsables } from '@/data';
 import { authHeaders } from '@/lib/auth';
 
 interface Marca {
@@ -52,9 +51,10 @@ export function OportunidadFormModal({ abierto, onCerrar, onGuardar, oportunidad
   const [valorEstimadoCOP, setValorEstimadoCOP] = useState(String(oportunidadInicial?.valorEstimadoCOP ?? ''));
   const [fechaEstimadaCierre, setFechaEstimadaCierre] = useState(formatDateForInput(oportunidadInicial?.fechaEstimadaCierre));
   const [proximoPaso, setProximoPaso] = useState(oportunidadInicial?.proximoPaso ?? '');
-  const [responsableInternoNombre, setResponsableInternoNombre] = useState(oportunidadInicial?.responsableInternoNombre ?? '');
-  const [responsableInternoCorreo, setResponsableInternoCorreo] = useState(oportunidadInicial?.responsableInternoCorreo ?? '');
-  const [responsableInternoTelefono, setResponsableInternoTelefono] = useState(oportunidadInicial?.responsableInternoTelefono ?? '');
+  const [probabilidad] = useState(oportunidadInicial?.probabilidad ?? 50);
+  // const [responsableInternoNombre, setResponsableInternoNombre] = useState(oportunidadInicial?.responsableInternoNombre ?? '');
+  // const [responsableInternoCorreo, setResponsableInternoCorreo] = useState(oportunidadInicial?.responsableInternoCorreo ?? '');
+  // const [responsableInternoTelefono, setResponsableInternoTelefono] = useState(oportunidadInicial?.responsableInternoTelefono ?? '');
   const [activosSeleccionados, setActivosSeleccionados] = useState<string[]>(
     oportunidadInicial?.activosPropuestosIds ?? [],
   );
@@ -189,9 +189,7 @@ export function OportunidadFormModal({ abierto, onCerrar, onGuardar, oportunidad
       fechaEstimadaCierre,
       activosPropuestosIds: activosSeleccionados,
       proximoPaso,
-      responsableInternoNombre,
-      responsableInternoCorreo,
-      responsableInternoTelefono,
+      probabilidad,
     });
     onCerrar();
   }
@@ -286,7 +284,7 @@ export function OportunidadFormModal({ abierto, onCerrar, onGuardar, oportunidad
           rows={2}
           required
         />
-        <div className="border-t border-gray-100 pt-4">
+        {/* <div className="border-t border-gray-100 pt-4">
           <h4 className="mb-3 text-sm font-semibold text-gray-900">Responsable Interno</h4>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <TextField
@@ -309,7 +307,7 @@ export function OportunidadFormModal({ abierto, onCerrar, onGuardar, oportunidad
               required
             />
           </div>
-        </div>
+        </div> */}
         <div className="flex justify-end gap-2 border-t border-gray-100 pt-4">
           <Button type="button" variante="secundario" onClick={onCerrar}>
             Cancelar

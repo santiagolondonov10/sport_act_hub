@@ -16,12 +16,13 @@ import { useCompromisos } from '../store';
 import { useMarcas } from '@/features/marcas/store';
 import { useToast } from '@/hooks/useToast';
 import { CompromisoDetalleModal } from '../components/CompromisoDetalleModal';
+import { CompromisoFormModal } from '../components/CompromisoFormModal';
 
 const PRIORIDADES: Prioridad[] = ['Baja', 'Media', 'Alta', 'Urgente'];
 
 export function CompromisosPage() {
   const { t } = useLanguage();
-  const { compromisos, cambiarEstado } = useCompromisos();
+  const { compromisos, cambiarEstado, actualizarCompromiso, eliminarCompromiso } = useCompromisos();
   const { marcas } = useMarcas();
   const { mostrarToast } = useToast();
 
@@ -30,6 +31,8 @@ export function CompromisosPage() {
   const [prioridad, setPrioridad] = useState('todas');
   const [responsableId, setResponsableId] = useState('todos');
   const [seleccionado, setSeleccionado] = useState<Compromiso | null>(null);
+  const [modalEditarAbierto, setModalEditarAbierto] = useState(false);
+  const [compromisoEditando, setCompromisoEditando] = useState<Compromiso | null>(null);
 
   const filtrados = useMemo(() => {
     return compromisos.filter((c) => {
@@ -153,7 +156,44 @@ export function CompromisosPage() {
         compromiso={seleccionado}
         onCerrar={() => setSeleccionado(null)}
         onCambiarEstado={handleCambiarEstado}
+        onEditar={(c) => {
+          setCompromisoEditando(c);
+          setModalEditarAbierto(true);
+          setSeleccionado(null);
+        }}
+        onEliminar={async (id) => {
+          try {
+            await eliminarCompromiso(id);
+            mostrarToast('Compromiso eliminado correctamente.');
+            setSeleccionado(null);
+          } catch (error) {
+            mostrarToast(error instanceof Error ? error.message : 'Error al eliminar el compromiso.');
+          }
+        }}
       />
+
+      {compromisoEditando && (
+        <CompromisoFormModal
+          abierto={modalEditarAbierto}
+          onCerrar={() => {
+            setModalEditarAbierto(false);
+            setCompromisoEditando(null);
+          }}
+          acuerdoId={compromisoEditando.acuerdoId}
+          marcaId={compromisoEditando.marcaId || ''}
+          compromisoInicial={compromisoEditando}
+          onGuardar={async (valores) => {
+            try {
+              await actualizarCompromiso(compromisoEditando.id, valores);
+              mostrarToast('Compromiso actualizado correctamente.');
+              setModalEditarAbierto(false);
+              setCompromisoEditando(null);
+            } catch (error) {
+              mostrarToast(error instanceof Error ? error.message : 'Error al guardar el compromiso.');
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -32,24 +32,35 @@ export function CompromisoFormModal({ abierto, onCerrar, onGuardar, acuerdoId, m
   const [categoria, setCategoria] = useState<CategoriaCompromiso>(compromisoInicial?.categoria ?? 'Activación');
   const [responsableId, setResponsableId] = useState(compromisoInicial?.responsableId ?? '');
   const [fechaLimite, setFechaLimite] = useState(compromisoInicial?.fechaLimite ?? '');
-  const [prioridad, setPrioridad] = useState(compromisoInicial?.prioridad ?? 'Media');
+  const [prioridad, setPrioridad] = useState<'Baja' | 'Media' | 'Alta' | 'Urgente'>(compromisoInicial?.prioridad ?? 'Media');
   const [estado, setEstado] = useState(compromisoInicial?.estado ?? 'Pendiente');
   const [progreso, setProgreso] = useState(compromisoInicial?.progreso ?? 0);
   const [evidenciasRequeridas, setEvidenciasRequeridas] = useState<number | string>(compromisoInicial?.evidenciasRequeridas ?? '');
   const [observaciones, setObservaciones] = useState(compromisoInicial?.observaciones ?? '');
 
-  // Reset form when modal opens/closes
+  // Reset form when modal opens/closes or compromisoInicial changes
   useEffect(() => {
-    if (abierto) {
-      setEntregable(compromisoInicial?.entregable ?? '');
-      setCategoria(compromisoInicial?.categoria ?? 'Activación');
-      setResponsableId(compromisoInicial?.responsableId ?? '');
-      setFechaLimite(compromisoInicial?.fechaLimite ?? '');
-      setPrioridad(compromisoInicial?.prioridad ?? 'Media');
-      setEstado(compromisoInicial?.estado ?? 'Pendiente');
-      setProgreso(compromisoInicial?.progreso ?? 0);
-      setEvidenciasRequeridas(compromisoInicial?.evidenciasRequeridas ?? '');
-      setObservaciones(compromisoInicial?.observaciones ?? '');
+    if (abierto && compromisoInicial) {
+      setEntregable(compromisoInicial.entregable ?? '');
+      setCategoria(compromisoInicial.categoria ?? 'Activación');
+      setResponsableId(compromisoInicial.responsableId ?? '');
+      setFechaLimite(compromisoInicial.fechaLimite ?? '');
+      setPrioridad(compromisoInicial.prioridad ?? 'Media');
+      setEstado(compromisoInicial.estado ?? 'Pendiente');
+      setProgreso(compromisoInicial.progreso ?? 0);
+      setEvidenciasRequeridas(compromisoInicial.evidenciasRequeridas ?? '');
+      setObservaciones(compromisoInicial.observaciones ?? '');
+    } else if (abierto && !compromisoInicial) {
+      // Reset to defaults when creating new
+      setEntregable('');
+      setCategoria('Activación');
+      setResponsableId('');
+      setFechaLimite('');
+      setPrioridad('Media');
+      setEstado('Pendiente');
+      setProgreso(0);
+      setEvidenciasRequeridas('');
+      setObservaciones('');
     }
   }, [abierto, compromisoInicial]);
 
@@ -73,9 +84,8 @@ export function CompromisoFormModal({ abierto, onCerrar, onGuardar, acuerdoId, m
       return;
     }
 
-    onGuardar({
+    const valores: any = {
       acuerdoId,
-      marcaId,
       entregable,
       categoria,
       responsableId,
@@ -91,7 +101,14 @@ export function CompromisoFormModal({ abierto, onCerrar, onGuardar, acuerdoId, m
       indicadorComprometido: null,
       metaIndicador: null,
       periodoIndicador: null,
-    });
+    };
+
+    // Solo incluir marcaId si estamos creando (no editando)
+    if (!esEdicion) {
+      valores.marcaId = marcaId;
+    }
+
+    onGuardar(valores);
     onCerrar();
   }
 
@@ -139,7 +156,7 @@ export function CompromisoFormModal({ abierto, onCerrar, onGuardar, acuerdoId, m
           <SelectField
             label="Prioridad"
             value={prioridad}
-            onChange={(e) => setPrioridad(e.target.value)}
+            onChange={(e) => setPrioridad(e.target.value as 'Baja' | 'Media' | 'Alta' | 'Urgente')}
             options={PRIORIDADES.map((p) => ({ value: p, label: p }))}
           />
         </div>

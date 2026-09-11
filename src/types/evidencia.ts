@@ -41,7 +41,11 @@ export interface Evidencia {
   responsableId: string;
   estado: EstadoEvidencia;
   colorPreview: string;
-  url?: string;
+  archivos?: Array<{
+    nombre: string;
+    tipo: string;
+    datos: string;
+  }>;
   /** Campaña de audiencia que esta evidencia respalda, cuando aplica. */
   campanaAudienciaId?: string;
 }
