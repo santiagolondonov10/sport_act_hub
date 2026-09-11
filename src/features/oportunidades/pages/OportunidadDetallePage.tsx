@@ -251,13 +251,6 @@ export function OportunidadDetallePage() {
                   <p className="text-xs text-gray-500">Valor estimado</p>
                   <p className="text-lg font-semibold text-gray-900">{formatCOP(oportunidad.valorEstimadoCOP)}</p>
                 </div>
-                <div>
-                  <p className="mb-1 text-xs text-gray-500">Probabilidad de cierre</p>
-                  <div className="flex items-center gap-2">
-                    <ProgressBar valor={oportunidad.probabilidad} className="w-32" />
-                    <span className="text-sm font-medium text-gray-700">{oportunidad.probabilidad}%</span>
-                  </div>
-                </div>
               </div>
 
               <div>

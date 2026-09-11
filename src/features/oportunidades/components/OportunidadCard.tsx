@@ -117,14 +117,6 @@ export function OportunidadCard({ oportunidad, onCambiarEtapa }: OportunidadCard
         {formatFecha(oportunidad.fechaEstimadaCierre)}
       </div>
 
-      <div className="mb-3 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
-        <div className="h-full rounded-full bg-accent-600" style={{ width: `${oportunidad.probabilidad}%` }} />
-      </div>
-
-      <div className="mb-3">
-        <p className="text-xs text-gray-500">{sectorNombre || '-'}</p>
-      </div>
-
       <div className="flex items-center justify-between gap-2">
         <span
           className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-semibold text-white bg-brand-600"

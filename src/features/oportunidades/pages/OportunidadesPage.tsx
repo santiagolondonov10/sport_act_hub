@@ -150,7 +150,6 @@ export function OportunidadesPage() {
                 <th className="px-4 py-3 font-medium">{t('table.marca')}</th>
                 <th className="px-4 py-3 font-medium">{t('table.etapa')}</th>
                 <th className="px-4 py-3 font-medium">{t('table.estimado')}</th>
-                <th className="px-4 py-3 font-medium">{t('table.probabilidad')}</th>
                 <th className="px-4 py-3 font-medium">{t('table.responsable')}</th>
                 <th className="px-4 py-3 font-medium">{t('table.cierreEstimado')}</th>
               </tr>
@@ -170,7 +169,6 @@ export function OportunidadesPage() {
                       <Badge estado={o.etapa} />
                     </td>
                     <td className="px-4 py-3 text-gray-600">{formatCOP(o.valorEstimadoCOP)}</td>
-                    <td className="px-4 py-3 text-gray-600">{formatPorcentaje(o.probabilidad)}</td>
                     <td className="px-4 py-3 text-gray-600">{responsable?.nombre}</td>
                     <td className="px-4 py-3 text-gray-600">{formatFecha(o.fechaEstimadaCierre)}</td>
                   </tr>

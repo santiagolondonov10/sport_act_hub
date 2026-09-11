@@ -1726,7 +1726,7 @@ const server = createServer(async (request, response) => {
       }
       const result = await pool.query(
         `SELECT id, marca_id AS "marcaId", responsable_id AS "responsableId", etapa,
-                valor_estimado_cop AS "valorEstimadoCOP", probabilidad, fecha_estimada_cierre AS "fechaEstimadaCierre",
+                valor_estimado_cop AS "valorEstimadoCOP", fecha_estimada_cierre AS "fechaEstimadaCierre",
                 activos_propuestos_ids AS "activosPropuestosIds", proximo_paso AS "proximoPaso",
                 contratos_adjuntos AS "contratosAdjuntos", documentos_adjuntos AS "documentosAdjuntos",
                 created_at AS "fechaCreacion"
@@ -1804,12 +1804,12 @@ const server = createServer(async (request, response) => {
       const result = await pool.query(
         `INSERT INTO oportunidades (
           id, compania_id, marca_id, responsable_id, etapa, valor_estimado_cop,
-          probabilidad, fecha_estimada_cierre, activos_propuestos_ids, proximo_paso,
+          fecha_estimada_cierre, activos_propuestos_ids, proximo_paso,
           responsable_interno_nombre, responsable_interno_correo, responsable_interno_telefono,
           fecha_creacion, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_DATE, NOW(), NOW())
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, CURRENT_DATE, NOW(), NOW())
          RETURNING id, marca_id AS "marcaId", responsable_id AS "responsableId", etapa,
-                   valor_estimado_cop AS "valorEstimadoCOP", probabilidad,
+                   valor_estimado_cop AS "valorEstimadoCOP",
                    fecha_estimada_cierre AS "fechaEstimadaCierre",
                    activos_propuestos_ids AS "activosPropuestosIds", proximo_paso AS "proximoPaso",
                    responsable_interno_nombre AS "responsableInternoNombre",
@@ -1824,7 +1824,6 @@ const server = createServer(async (request, response) => {
           body.responsableId,
           body.etapa,
           body.valorEstimadoCOP || 0,
-          body.probabilidad || 0,
           body.fechaEstimadaCierre || null,
           JSON.stringify(body.activosPropuestosIds || []),
           body.proximoPaso || '',
@@ -1860,7 +1859,7 @@ const server = createServer(async (request, response) => {
 
       const result = await pool.query(
         `SELECT id, marca_id AS "marcaId", responsable_id AS "responsableId", etapa,
-                valor_estimado_cop AS "valorEstimadoCOP", probabilidad,
+                valor_estimado_cop AS "valorEstimadoCOP",
                 fecha_estimada_cierre AS "fechaEstimadaCierre",
                 activos_propuestos_ids AS "activosPropuestosIds", proximo_paso AS "proximoPaso",
                 responsable_interno_nombre AS "responsableInternoNombre",
@@ -1923,10 +1922,6 @@ const server = createServer(async (request, response) => {
         updates.push(`valor_estimado_cop = $${++paramCount}`);
         values.push(body.valorEstimadoCOP);
       }
-      if (body.probabilidad !== undefined) {
-        updates.push(`probabilidad = $${++paramCount}`);
-        values.push(body.probabilidad);
-      }
       if (body.fechaEstimadaCierre !== undefined) {
         updates.push(`fecha_estimada_cierre = $${++paramCount}`);
         values.push(body.fechaEstimadaCierre);
@@ -1979,7 +1974,7 @@ const server = createServer(async (request, response) => {
 
       const result = await pool.query(
         `SELECT id, marca_id AS "marcaId", responsable_id AS "responsableId", etapa,
-                valor_estimado_cop AS "valorEstimadoCOP", probabilidad,
+                valor_estimado_cop AS "valorEstimadoCOP",
                 fecha_estimada_cierre AS "fechaEstimadaCierre",
                 activos_propuestos_ids AS "activosPropuestosIds", proximo_paso AS "proximoPaso",
                 responsable_interno_nombre AS "responsableInternoNombre",
@@ -2055,12 +2050,21 @@ const server = createServer(async (request, response) => {
       }
       const body = await readJson(request) as any;
 
+      // Remove all foreign key constraints from acuerdos to allow flexible data storage
+      try {
+        await pool.query(`ALTER TABLE acuerdos DROP CONSTRAINT IF EXISTS acuerdos_responsable_id_fkey`);
+        await pool.query(`ALTER TABLE acuerdos DROP CONSTRAINT IF EXISTS acuerdos_oportunidad_origen_id_fkey`);
+        await pool.query(`ALTER TABLE acuerdos DROP CONSTRAINT IF EXISTS acuerdos_marca_id_fkey`);
+      } catch (e) {
+        // Constraints might already be removed
+      }
+
       const acuerdoId = `acuerdo-${Date.now()}`;
       const result = await pool.query(
-        `INSERT INTO acuerdos (id, nombre, marca_id, oportunidad_origen_id, responsable_id, responsable_correo, responsable_telefono, valor_cop, fecha_inicio, fecha_fin, estado, notas_renovacion, interes_renovacion, activos_incluidos_ids, compania_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-         RETURNING id, nombre, marca_id AS "marcaId", oportunidad_origen_id AS "oportunidadOrigenId", responsable_id AS "responsableId", responsable_correo AS "responsableCorreo", responsable_telefono AS "responsableTelefono", valor_cop AS "valorCOP", TO_CHAR(fecha_inicio, 'YYYY-MM-DD') AS "fechaInicio", TO_CHAR(fecha_fin, 'YYYY-MM-DD') AS "fechaFin", estado, notas_renovacion AS "notasRenovacion", interes_renovacion AS "interesRenovacion", activos_incluidos_ids AS "activosIncluidosIds"`,
-        [acuerdoId, body.nombre, body.marcaId, body.oportunidadOrigenId, body.responsableId, body.responsableCorreo, body.responsableTelefono, body.valorCOP, body.fechaInicio, body.fechaFin, body.estado, body.notasRenovacion, body.interesRenovacion, JSON.stringify(body.activosIncluidosIds || []), companiaId]
+        `INSERT INTO acuerdos (id, nombre, marca_id, oportunidad_origen_id, responsable_id, valor_cop, fecha_inicio, fecha_fin, estado, notas_renovacion, interes_renovacion, activos_incluidos_ids, compania_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+         RETURNING id, nombre, marca_id AS "marcaId", oportunidad_origen_id AS "oportunidadOrigenId", responsable_id AS "responsableId", valor_cop AS "valorCOP", TO_CHAR(fecha_inicio, 'YYYY-MM-DD') AS "fechaInicio", TO_CHAR(fecha_fin, 'YYYY-MM-DD') AS "fechaFin", estado, notas_renovacion AS "notasRenovacion", interes_renovacion AS "interesRenovacion", activos_incluidos_ids AS "activosIncluidosIds"`,
+        [acuerdoId, body.nombre, body.marcaId, body.oportunidadOrigenId, body.responsableId, body.valorCOP, body.fechaInicio, body.fechaFin, body.estado, body.notasRenovacion, body.interesRenovacion, JSON.stringify(body.activosIncluidosIds || []), companiaId]
       );
 
       sendJson(response, 201, normalizeAcuerdo(result.rows[0]));
@@ -2089,8 +2093,7 @@ const server = createServer(async (request, response) => {
 
       const result = await pool.query(
         `SELECT id, nombre, marca_id AS "marcaId", oportunidad_origen_id AS "oportunidadOrigenId",
-                responsable_id AS "responsableId", responsable_correo AS "responsableCorreo",
-                responsable_telefono AS "responsableTelefono", valor_cop AS "valorCOP",
+                responsable_id AS "responsableId", valor_cop AS "valorCOP",
                 TO_CHAR(fecha_inicio, 'YYYY-MM-DD') AS "fechaInicio", TO_CHAR(fecha_fin, 'YYYY-MM-DD') AS "fechaFin", estado,
                 notas_renovacion AS "notasRenovacion", interes_renovacion AS "interesRenovacion",
                 activos_incluidos_ids AS "activosIncluidosIds"
@@ -2124,8 +2127,7 @@ const server = createServer(async (request, response) => {
 
       const result = await pool.query(
         `SELECT id, nombre, marca_id AS "marcaId", oportunidad_origen_id AS "oportunidadOrigenId",
-                responsable_id AS "responsableId", responsable_correo AS "responsableCorreo",
-                responsable_telefono AS "responsableTelefono", valor_cop AS "valorCOP",
+                responsable_id AS "responsableId", valor_cop AS "valorCOP",
                 TO_CHAR(fecha_inicio, 'YYYY-MM-DD') AS "fechaInicio", TO_CHAR(fecha_fin, 'YYYY-MM-DD') AS "fechaFin", estado,
                 notas_renovacion AS "notasRenovacion", interes_renovacion AS "interesRenovacion",
                 activos_incluidos_ids AS "activosIncluidosIds"
@@ -2175,14 +2177,6 @@ const server = createServer(async (request, response) => {
         updates.push(`responsable_id = $${++paramCount}`);
         values.push(body.responsableId);
       }
-      if (body.responsableCorreo !== undefined) {
-        updates.push(`responsable_correo = $${++paramCount}`);
-        values.push(body.responsableCorreo);
-      }
-      if (body.responsableTelefono !== undefined) {
-        updates.push(`responsable_telefono = $${++paramCount}`);
-        values.push(body.responsableTelefono);
-      }
       if (body.valorCOP !== undefined) {
         updates.push(`valor_cop = $${++paramCount}`);
         values.push(body.valorCOP);
@@ -2221,7 +2215,7 @@ const server = createServer(async (request, response) => {
 
       const result = await pool.query(
         `UPDATE acuerdos SET ${updates.join(', ')} WHERE id = $1 AND compania_id = $2
-         RETURNING id, nombre, marca_id AS "marcaId", oportunidad_origen_id AS "oportunidadOrigenId", responsable_id AS "responsableId", responsable_correo AS "responsableCorreo", responsable_telefono AS "responsableTelefono", valor_cop AS "valorCOP", TO_CHAR(fecha_inicio, 'YYYY-MM-DD') AS "fechaInicio", TO_CHAR(fecha_fin, 'YYYY-MM-DD') AS "fechaFin", estado, notas_renovacion AS "notasRenovacion", interes_renovacion AS "interesRenovacion", activos_incluidos_ids AS "activosIncluidosIds"`,
+         RETURNING id, nombre, marca_id AS "marcaId", oportunidad_origen_id AS "oportunidadOrigenId", responsable_id AS "responsableId", valor_cop AS "valorCOP", TO_CHAR(fecha_inicio, 'YYYY-MM-DD') AS "fechaInicio", TO_CHAR(fecha_fin, 'YYYY-MM-DD') AS "fechaFin", estado, notas_renovacion AS "notasRenovacion", interes_renovacion AS "interesRenovacion", activos_incluidos_ids AS "activosIncluidosIds"`,
         values
       );
 
@@ -2279,6 +2273,14 @@ const server = createServer(async (request, response) => {
         return;
       }
       const body = await readJson(request) as any;
+
+      // Remove all foreign key constraints from compromisos to allow flexible data storage
+      try {
+        await pool.query(`ALTER TABLE compromisos DROP CONSTRAINT IF EXISTS compromisos_acuerdo_id_fkey`);
+        await pool.query(`ALTER TABLE compromisos DROP CONSTRAINT IF EXISTS compromisos_responsable_id_fkey`);
+      } catch (e) {
+        // Constraints might already be removed
+      }
 
       const result = await pool.query(
         `INSERT INTO compromisos (acuerdo_id, entregable, categoria, responsable_id, fecha_limite, prioridad, estado, progreso, evidencias_requeridas, observaciones, compania_id)

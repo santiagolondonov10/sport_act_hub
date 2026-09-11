@@ -50,7 +50,6 @@ export function OportunidadFormModal({ abierto, onCerrar, onGuardar, oportunidad
   const [contactosDisponibles, setContactosDisponibles] = useState<Array<{ id: string; nombre: string; telefono?: string; correo?: string }>>([]);
   const [etapa, setEtapa] = useState(oportunidadInicial?.etapa ?? ETAPAS_OPORTUNIDAD[0]);
   const [valorEstimadoCOP, setValorEstimadoCOP] = useState(String(oportunidadInicial?.valorEstimadoCOP ?? ''));
-  const [probabilidad, setProbabilidad] = useState(String(oportunidadInicial?.probabilidad ?? '20'));
   const [fechaEstimadaCierre, setFechaEstimadaCierre] = useState(formatDateForInput(oportunidadInicial?.fechaEstimadaCierre));
   const [proximoPaso, setProximoPaso] = useState(oportunidadInicial?.proximoPaso ?? '');
   const [responsableInternoNombre, setResponsableInternoNombre] = useState(oportunidadInicial?.responsableInternoNombre ?? '');
@@ -187,7 +186,6 @@ export function OportunidadFormModal({ abierto, onCerrar, onGuardar, oportunidad
       responsableId,
       etapa,
       valorEstimadoCOP: Number(valorEstimadoCOP) || 0,
-      probabilidad: Number(probabilidad) || 0,
       fechaEstimadaCierre,
       activosPropuestosIds: activosSeleccionados,
       proximoPaso,
@@ -251,15 +249,6 @@ export function OportunidadFormModal({ abierto, onCerrar, onGuardar, oportunidad
               />
             </div>
           </div>
-          <TextField
-            label="Probabilidad (%)"
-            type="number"
-            min={0}
-            max={100}
-            value={probabilidad}
-            onChange={(e) => setProbabilidad(e.target.value)}
-            required
-          />
         </div>
         <TextField
           label="Fecha estimada de cierre"

@@ -30,7 +30,7 @@ const monthDate = (month: string) => {
 
 async function applyMigrations() {
   const baseMigrations = ['001_initial_schema.sql', '002_audience_relationships.sql', '003_auth_credentials.sql', '004_subscriptions.sql', '005_roles_menu_access.sql', '006_admin_subscription_parametrizacion.sql', '007_companias.sql', '008_sectores.sql', '009_remove_roles.sql', '010_subscription_access_defaults.sql', '011_auth_compania.sql', '012_reportes_admin.sql', '013_password_reset.sql', '014_multi_tenant_compania_id.sql', '015_marcas_detalladas.sql', '016_marcas_sector.sql', '017_marcas_rut_bytea.sql', '018_marcas_cargo_contacto.sql', '019_update_menu_order.sql', '020_activo_categorias_table.sql', '021_oportunidades_adjuntos.sql', '022_remove_categoria_column_from_activos.sql'];
-  const serverMigrations = ['022_activo_fotos_table.sql', '023_update_marcas_table.sql', '024_add_marketplace_menu_option.sql', '025_add_marketplace_to_subscriptions.sql', '026_add_contrato_to_oportunidades.sql', '027_add_documentos_to_activos.sql', '028_update_oportunidades_etapa_check.sql', '029_add_contratos_to_oportunidades.sql', '030_add_activos_ids_to_acuerdos.sql', '031_add_responsable_contact_to_acuerdos.sql', '032_remove_responsable_fkey_from_acuerdos.sql', '033_add_marcas_menu_option.sql', '034_fix_menu_order.sql', '035_add_activos_propuestos_to_oportunidades.sql', '036_remove_responsable_fkey_from_oportunidades.sql', '037_add_responsable_interno_to_oportunidades.sql'];
+  const serverMigrations = ['022_activo_fotos_table.sql', '023_update_marcas_table.sql', '024_add_marketplace_menu_option.sql', '025_add_marketplace_to_subscriptions.sql', '026_add_contrato_to_oportunidades.sql', '027_add_documentos_to_activos.sql', '028_update_oportunidades_etapa_check.sql', '029_add_contratos_to_oportunidades.sql', '030_add_activos_ids_to_acuerdos.sql', '031_add_responsable_contact_to_acuerdos.sql', '032_remove_responsable_fkey_from_acuerdos.sql', '033_add_marcas_menu_option.sql', '034_fix_menu_order.sql', '035_add_activos_propuestos_to_oportunidades.sql', '036_remove_responsable_fkey_from_oportunidades.sql', '037_add_responsable_interno_to_oportunidades.sql', '038_remove_probabilidad_from_oportunidades.sql', '039_remove_responsable_fkey_from_acuerdos.sql'];
   const migrationFiles = baseMigrations.concat(serverMigrations);
 
   for (const filename of migrationFiles) {
@@ -71,15 +71,21 @@ async function applyMigrations() {
                               ? (await client.query(`SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'marcas' AND column_name = 'compania_id') AS exists`)).rows[0].exists
                               : filename.startsWith('027')
                               ? (await client.query(`SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'activos' AND column_name = 'documentos_adjuntos') AS exists`)).rows[0].exists
+                              : filename.startsWith('038')
+                              ? !(await client.query(`SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'oportunidades' AND column_name = 'probabilidad') AS exists`)).rows[0].exists
                               : filename.startsWith('037')
                               ? (await client.query(`SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'oportunidades' AND column_name = 'responsable_interno_nombre') AS exists`)).rows[0].exists
+                              : filename.startsWith('039')
+                              ? false
                               : filename.startsWith('036')
                               ? !(await client.query(`SELECT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE table_name = 'oportunidades' AND constraint_name = 'oportunidades_responsable_id_fkey') AS exists`)).rows[0].exists
                               : filename.startsWith('035')
                               ? (await client.query(`SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'oportunidades' AND column_name = 'activos_propuestos_ids') AS exists`)).rows[0].exists
                               : filename.startsWith('033')
                                 ? (await client.query(`SELECT EXISTS (SELECT 1 FROM menu_options WHERE code = 'marcas') AS exists`)).rows[0].exists
-                                : filename.startsWith('030')
+                                : filename.startsWith('032')
+                              ? false
+                              : filename.startsWith('030')
                         ? (await client.query(`SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'acuerdos' AND column_name = 'activos_incluidos_ids') AS exists`)).rows[0].exists
                         : (await client.query(`SELECT to_regclass('public.${filename.startsWith('002') ? 'activo_audiencias' : filename.startsWith('003') ? 'auth_credentials' : filename.startsWith('004') ? 'subscriptions' : filename.startsWith('005') ? 'menu_options' : filename.startsWith('007') ? 'companias' : 'sectores'}') IS NOT NULL AS exists`)).rows[0].exists;
     if (alreadyApplied) continue;
@@ -106,6 +112,38 @@ async function applyMigrations() {
 async function seed() {
   // Apply migrations BEFORE starting transaction
   await applyMigrations();
+
+  // Remove ALL foreign key constraints from acuerdos table
+  try {
+    await client.query(`ALTER TABLE acuerdos DROP CONSTRAINT IF EXISTS acuerdos_responsable_id_fkey`);
+  } catch (e) {
+    // Constraint might already be removed
+  }
+  try {
+    await client.query(`ALTER TABLE acuerdos DROP CONSTRAINT IF EXISTS acuerdos_oportunidad_origen_id_fkey`);
+  } catch (e) {
+    // Constraint might already be removed
+  }
+  try {
+    await client.query(`ALTER TABLE acuerdos DROP CONSTRAINT IF EXISTS acuerdos_marca_id_fkey`);
+  } catch (e) {
+    // Constraint might already be removed
+  }
+  try {
+    await client.query(`ALTER TABLE acuerdos ALTER COLUMN responsable_id DROP NOT NULL`);
+  } catch (e) {
+    // Already nullable
+  }
+  try {
+    await client.query(`ALTER TABLE acuerdos ALTER COLUMN oportunidad_origen_id DROP NOT NULL`);
+  } catch (e) {
+    // Already nullable
+  }
+  try {
+    await client.query(`ALTER TABLE acuerdos ALTER COLUMN marca_id DROP NOT NULL`);
+  } catch (e) {
+    // Already nullable
+  }
 
   await client.query('BEGIN');
 
