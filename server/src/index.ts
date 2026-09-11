@@ -1434,6 +1434,7 @@ const server = createServer(async (request, response) => {
                 persona_contacto_2 AS "personaContacto2", telefono_contacto_2 AS "telefonoContacto2",
                 correo_contacto_2 AS "correoContacto2", cargo_contacto_2 AS "cargoContacto2", persona_contacto_3 AS "personaContacto3",
                 telefono_contacto_3 AS "telefonoContacto3", correo_contacto_3 AS "correoContacto3", cargo_contacto_3 AS "cargoContacto3",
+                contactar_por_whatsapp AS "contactarPorWhatsapp", contactar_por_correo AS "contactarPorCorreo",
                 creado_por AS "creadoPor", actualizado_por AS "actualizadoPor",
                 created_at AS "createdAt", updated_at AS "updatedAt", compania_id AS "companiaId"
          FROM marcas WHERE compania_id = $1 ORDER BY created_at DESC`,
@@ -1481,21 +1482,22 @@ const server = createServer(async (request, response) => {
                 persona_contacto_2, telefono_contacto_2, correo_contacto_2, cargo_contacto_2,
                 persona_contacto_3, telefono_contacto_3, correo_contacto_3, cargo_contacto_3,
                 logo_iniciales, color_marca, contacto_nombre, contacto_cargo, contacto_email, contacto_telefono,
-                creado_por)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
+                contactar_por_whatsapp, contactar_por_correo, creado_por)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29)
          RETURNING id, nombre, tipo_identificacion AS "tipoIdentificacion", identificacion,
                 rut_nombre_archivo AS "rutNombre", sector_id AS "sectorId", persona_contacto_1 AS "personaContacto1",
                 telefono_contacto_1 AS "telefonoContacto1", correo_contacto_1 AS "correoContacto1", cargo_contacto_1 AS "cargoContacto1",
                 persona_contacto_2 AS "personaContacto2", telefono_contacto_2 AS "telefonoContacto2",
                 correo_contacto_2 AS "correoContacto2", cargo_contacto_2 AS "cargoContacto2", persona_contacto_3 AS "personaContacto3",
                 telefono_contacto_3 AS "telefonoContacto3", correo_contacto_3 AS "correoContacto3", cargo_contacto_3 AS "cargoContacto3",
+                contactar_por_whatsapp AS "contactarPorWhatsapp", contactar_por_correo AS "contactarPorCorreo",
                 creado_por AS "creadoPor", actualizado_por AS "actualizadoPor",
                 created_at AS "createdAt", updated_at AS "updatedAt", compania_id AS "companiaId"`,
         [marcaId, companiaId, body.nombre, body.tipoIdentificacion, body.identificacion,
          rutBuffer, rutNombre, body.sectorId || null, body.personaContacto1 || null, body.telefonoContacto1 || null,
          body.correoContacto1 || null, body.cargoContacto1 || null, body.personaContacto2 || null, body.telefonoContacto2 || null,
          body.correoContacto2 || null, body.cargoContacto2 || null, body.personaContacto3 || null, body.telefonoContacto3 || null,
-         body.correoContacto3 || null, body.cargoContacto3 || null, logoInicial, '#000000', body.personaContacto1 || '', body.cargoContacto1 || '', body.correoContacto1 || '', body.telefonoContacto1 || '', userId]
+         body.correoContacto3 || null, body.cargoContacto3 || null, logoInicial, '#000000', body.personaContacto1 || '', body.cargoContacto1 || '', body.correoContacto1 || '', body.telefonoContacto1 || '', body.contactarPorWhatsapp || false, body.contactarPorCorreo || false, userId]
       );
       sendJson(response, 201, result.rows[0]);
       return;
@@ -1606,6 +1608,14 @@ const server = createServer(async (request, response) => {
         updates.push(`cargo_contacto_3 = $${++paramCount}`);
         values.push(body.cargoContacto3);
       }
+      if (body.contactarPorWhatsapp !== undefined) {
+        updates.push(`contactar_por_whatsapp = $${++paramCount}`);
+        values.push(body.contactarPorWhatsapp);
+      }
+      if (body.contactarPorCorreo !== undefined) {
+        updates.push(`contactar_por_correo = $${++paramCount}`);
+        values.push(body.contactarPorCorreo);
+      }
 
       updates.push(`actualizado_por = $${++paramCount}`);
       values.push(userId);
@@ -1628,6 +1638,7 @@ const server = createServer(async (request, response) => {
                 persona_contacto_2 AS "personaContacto2", telefono_contacto_2 AS "telefonoContacto2",
                 correo_contacto_2 AS "correoContacto2", cargo_contacto_2 AS "cargoContacto2", persona_contacto_3 AS "personaContacto3",
                 telefono_contacto_3 AS "telefonoContacto3", correo_contacto_3 AS "correoContacto3", cargo_contacto_3 AS "cargoContacto3",
+                contactar_por_whatsapp AS "contactarPorWhatsapp", contactar_por_correo AS "contactarPorCorreo",
                 creado_por AS "creadoPor", actualizado_por AS "actualizadoPor",
                 created_at AS "createdAt", updated_at AS "updatedAt", compania_id AS "companiaId"
          FROM marcas WHERE id = $1 AND compania_id = $2`,

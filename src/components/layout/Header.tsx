@@ -163,7 +163,7 @@ export function Header({ onAbrirMenu }: HeaderProps) {
 
       {sessionUser?.companiaLogo && (
         <div className="flex items-center gap-1 rounded-lg border border-gray-200 px-2 py-1.5">
-          <img src={sessionUser.companiaLogo} alt={sessionUser.companiaNombre || 'Compañía'} className="h-6 w-6 rounded object-cover" title={sessionUser.companiaNombre} />
+          <img src={sessionUser.companiaLogo} alt={sessionUser.companiaNombre || 'Compañía'} className="h-6 w-6 rounded object-cover" title={sessionUser.companiaNombre || undefined} />
           <span className="text-xs font-medium text-gray-600 hidden sm:block max-w-32 truncate">{sessionUser.companiaNombre}</span>
         </div>
       )}

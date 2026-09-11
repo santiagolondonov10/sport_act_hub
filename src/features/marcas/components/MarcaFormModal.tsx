@@ -29,6 +29,8 @@ export function MarcaFormModal({ abierto, onCerrar, marcaId }: MarcaFormModalPro
     identificacion: '',
     rutNombre: '',
     sectorId: '',
+    contactarPorWhatsapp: false,
+    contactarPorCorreo: false,
     personaContacto1: '',
     telefonoContacto1: '',
     correoContacto1: '',
@@ -70,6 +72,8 @@ export function MarcaFormModal({ abierto, onCerrar, marcaId }: MarcaFormModalPro
           identificacion: marca.identificacion,
           rutNombre: marca.rutNombre || '',
           sectorId: marca.sectorId || '',
+          contactarPorWhatsapp: marca.contactarPorWhatsapp || false,
+          contactarPorCorreo: marca.contactarPorCorreo || false,
           personaContacto1: marca.personaContacto1 || '',
           telefonoContacto1: marca.telefonoContacto1 || '',
           correoContacto1: marca.correoContacto1 || '',
@@ -92,6 +96,8 @@ export function MarcaFormModal({ abierto, onCerrar, marcaId }: MarcaFormModalPro
         identificacion: '',
         rutNombre: '',
         sectorId: '',
+        contactarPorWhatsapp: false,
+        contactarPorCorreo: false,
         personaContacto1: '',
         telefonoContacto1: '',
         correoContacto1: '',
@@ -110,8 +116,11 @@ export function MarcaFormModal({ abierto, onCerrar, marcaId }: MarcaFormModalPro
   }, [abierto, marcaId, getMarcaPorId]);
 
   const handleCambio = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormulario((prev) => ({ ...prev, [name]: value }));
+    const { name, value, type } = e.target;
+    setFormulario((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
+    }));
   };
 
   const handleRutChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -311,6 +320,32 @@ export function MarcaFormModal({ abierto, onCerrar, marcaId }: MarcaFormModalPro
                 </button>
               </div>
             )}
+          </div>
+        </div>
+
+        <div className="border-t border-gray-200 pt-4">
+          <h4 className="mb-3 text-sm font-semibold text-gray-900">Contactar por:</h4>
+          <div className="space-y-2">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                name="contactarPorWhatsapp"
+                checked={formulario.contactarPorWhatsapp}
+                onChange={handleCambio}
+                className="rounded border-gray-300"
+              />
+              <span className="text-sm text-gray-700">WhatsApp</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                name="contactarPorCorreo"
+                checked={formulario.contactarPorCorreo}
+                onChange={handleCambio}
+                className="rounded border-gray-300"
+              />
+              <span className="text-sm text-gray-700">Correo</span>
+            </label>
           </div>
         </div>
 

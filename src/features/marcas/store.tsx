@@ -22,6 +22,8 @@ export interface Marca {
   telefonoContacto3?: string | null;
   correoContacto3?: string | null;
   cargoContacto3?: string | null;
+  contactarPorWhatsapp?: boolean;
+  contactarPorCorreo?: boolean;
   creadoPor?: string | null;
   actualizadoPor?: string | null;
   createdAt?: string;
