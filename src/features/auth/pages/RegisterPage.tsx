@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowRight, CheckCircle2, LockKeyhole, UserPlus } from 'lucide-react';
+import { ArrowRight, CheckCircle2, LockKeyhole, UserPlus, Eye, EyeOff } from 'lucide-react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/Field';
@@ -14,6 +14,8 @@ export function RegisterPage() {
   const [confirmation, setConfirmation] = useState('');
   const [error, setError] = useState('');
   const [enviando, setEnviando] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   if (hasSession()) return <Navigate to="/" replace />;
 
@@ -68,18 +70,72 @@ export function RegisterPage() {
 
       <section className="mx-auto mt-12 w-full max-w-md lg:mt-0 lg:flex lg:items-center">
         <div className="w-full rounded-2xl bg-white p-7 text-gray-900 shadow-2xl shadow-black/20 sm:p-9">
-          <div className="mb-8">
-            <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-accent-100 text-brand-800"><UserPlus size={21} aria-hidden="true" /></div>
-            <p className="mb-2 text-sm font-semibold uppercase tracking-[0.16em] text-brand-700">Nuevo acceso</p>
-            <h2 className="text-2xl font-semibold tracking-tight text-gray-950">Crea tu cuenta</h2>
-            <p className="mt-2 text-sm leading-6 text-gray-500">Configura tus datos para entrar al Business Hub.</p>
+          <div className="mb-8 flex flex-col items-center">
+            <img src={logo} alt="Sports Act" className="mb-6 h-12 w-auto object-contain" />
+            <div className="text-center">
+              <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-accent-100 text-brand-800 mx-auto"><UserPlus size={21} aria-hidden="true" /></div>
+              <p className="mb-2 text-sm font-semibold uppercase tracking-[0.16em] text-brand-700">Nuevo acceso</p>
+              <h2 className="text-2xl font-semibold tracking-tight text-gray-950">Crea tu cuenta</h2>
+              <p className="mt-2 text-sm leading-6 text-gray-500">Configura tus datos para entrar al Business Hub.</p>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <TextField label="Correo electrónico" id="register-email" type="email" autoComplete="email" placeholder="tu@empresa.com" value={email} onChange={(event) => setEmail(event.target.value)} required />
             <TextField label="Usuario" id="register-username" type="text" autoComplete="username" placeholder="tu_usuario" hint="Usa entre 3 y 32 caracteres, sin espacios." value={username} onChange={(event) => setUsername(event.target.value)} required />
-            <TextField label="Contraseña" id="register-password" type="password" autoComplete="new-password" placeholder="Mínimo 8 caracteres" value={password} onChange={(event) => setPassword(event.target.value)} minLength={8} required />
-            <TextField label="Confirmar contraseña" id="register-confirmation" type="password" autoComplete="new-password" placeholder="Repite tu contraseña" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} minLength={8} required />
+
+            <div>
+              <label htmlFor="register-password" className="block text-sm font-medium text-gray-700 mb-1.5">Contraseña</label>
+              <div className="relative">
+                <input
+                  id="register-password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  placeholder="Mínimo 8 caracteres"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  minLength={8}
+                  required
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 pr-10 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-800/20"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                  title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="register-confirmation" className="block text-sm font-medium text-gray-700 mb-1.5">Confirmar contraseña</label>
+              <div className="relative">
+                <input
+                  id="register-confirmation"
+                  type={showConfirmation ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  placeholder="Repite tu contraseña"
+                  value={confirmation}
+                  onChange={(event) => setConfirmation(event.target.value)}
+                  minLength={8}
+                  required
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 pr-10 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-800/20"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmation(!showConfirmation)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                  title={showConfirmation ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  aria-label={showConfirmation ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                >
+                  {showConfirmation ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+
             {error && <div role="alert" className="rounded-lg border border-danger-500/30 bg-danger-50 px-3 py-2.5 text-sm text-danger-700">{error}</div>}
             <Button type="submit" variante="primario" tamano="md" disabled={enviando} className="w-full py-2.5" icono={enviando ? <LockKeyhole size={17} aria-hidden="true" /> : <ArrowRight size={17} aria-hidden="true" />}>
               {enviando ? 'Creando cuenta...' : 'Crear cuenta'}

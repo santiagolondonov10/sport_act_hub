@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { formatFechaLarga } from '@/lib/format';
 import { useAcuerdos } from '@/features/acuerdos/store';
 import { useMarcas } from '@/features/marcas/store';
+import { useCompromisos } from '@/features/compromisos/store';
 import type { Evidencia, EstadoEvidencia } from '@/types';
 
 interface EvidenciaDetalleModalProps {
@@ -25,7 +26,9 @@ export function EvidenciaDetalleModal({ evidencia, onCerrar, onCambiarEstado, on
 
   const { acuerdos } = useAcuerdos();
   const { marcas } = useMarcas();
+  const { compromisos } = useCompromisos();
 
+  const compromiso = compromisos.find((c) => c.id === evidencia.compromisoId);
   const acuerdo = acuerdos.find((a) => a.id === evidencia.acuerdoId);
   const marca = acuerdo ? marcas.find((m) => m.id === acuerdo.marcaId) : undefined;
   const primeraImagen = evidencia.archivos?.find((a) => TIPOS_IMAGEN.includes(a.tipo));
@@ -79,6 +82,10 @@ export function EvidenciaDetalleModal({ evidencia, onCerrar, onCambiarEstado, on
             ) : (
               <p className="font-medium text-gray-900">-</p>
             )}
+          </div>
+          <div className="col-span-2">
+            <p className="text-xs text-gray-500">Compromiso</p>
+            <p className="font-medium text-gray-900">{compromiso?.entregable || '-'}</p>
           </div>
         </div>
 
