@@ -26,6 +26,7 @@ export const ESTADOS_COMPROMISO: EstadoCompromiso[] = [
 export interface Compromiso {
   id: string;
   acuerdoId: string;
+  marcaId?: string;
   entregable: string;
   categoria: CategoriaCompromiso;
   responsableId: string;

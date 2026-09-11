@@ -2315,7 +2315,7 @@ const server = createServer(async (request, response) => {
       }
 
       const result = await pool.query(
-        `SELECT id, acuerdo_id AS "acuerdoId", entregable, categoria, responsable_id AS "responsableId",
+        `SELECT id, acuerdo_id AS "acuerdoId", marca_id AS "marcaId", entregable, categoria, responsable_id AS "responsableId",
                 TO_CHAR(fecha_limite, 'YYYY-MM-DD') AS "fechaLimite", prioridad, estado, progreso,
                 evidencias_requeridas AS "evidenciasRequeridas", observaciones
          FROM compromisos WHERE compania_id = $1 ORDER BY fecha_limite ASC`,

@@ -6,7 +6,9 @@ import { ProgressBar } from '@/components/ui/ProgressBar';
 import { ESTADOS_COMPROMISO } from '@/types';
 import type { Compromiso, EstadoCompromiso } from '@/types';
 import { formatFechaLarga, formatNumero, diasHasta } from '@/lib/format';
-import { canalesAudiencia, campanasAudiencia, getAcuerdo, getEvidenciasPorCompromiso, getMarca, getResponsable, segmentosAudiencia } from '@/data';
+import { canalesAudiencia, campanasAudiencia, segmentosAudiencia } from '@/data';
+import { useAcuerdos } from '@/features/acuerdos/store';
+import { useMarcas } from '@/features/marcas/store';
 
 interface CompromisoDetalleModalProps {
   compromiso: Compromiso | null;
@@ -17,10 +19,11 @@ interface CompromisoDetalleModalProps {
 export function CompromisoDetalleModal({ compromiso, onCerrar, onCambiarEstado }: CompromisoDetalleModalProps) {
   if (!compromiso) return null;
 
-  const acuerdo = getAcuerdo(compromiso.acuerdoId);
-  const marca = acuerdo ? getMarca(acuerdo.marcaId) : undefined;
-  const responsable = getResponsable(compromiso.responsableId);
-  const evidencias = getEvidenciasPorCompromiso(compromiso.id);
+  const { acuerdos } = useAcuerdos();
+  const { marcas } = useMarcas();
+
+  const acuerdo = acuerdos.find((a) => a.id === compromiso.acuerdoId);
+  const marca = compromiso.marcaId ? marcas.find((m) => m.id === compromiso.marcaId) : undefined;
   const dias = diasHasta(compromiso.fechaLimite);
   const segmento = segmentosAudiencia.find((s) => s.id === compromiso.segmentoAudienciaId);
   const canalAudiencia = canalesAudiencia.find((c) => c.id === compromiso.canalAudienciaId);
@@ -51,7 +54,7 @@ export function CompromisoDetalleModal({ compromiso, onCerrar, onCambiarEstado }
           </div>
           <div>
             <p className="text-xs text-gray-500">Responsable</p>
-            <p className="font-medium text-gray-900">{responsable?.nombre}</p>
+            <p className="font-medium text-gray-900">{compromiso.responsableId || '-'}</p>
           </div>
           <div>
             <p className="text-xs text-gray-500">Fecha límite</p>
@@ -81,7 +84,7 @@ export function CompromisoDetalleModal({ compromiso, onCerrar, onCambiarEstado }
 
         <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-sm">
           <span className="text-gray-600">
-            {evidencias.length} de {compromiso.evidenciasRequeridas} evidencia(s) requerida(s) registrada(s)
+            0 de {compromiso.evidenciasRequeridas} evidencia(s) requerida(s) registrada(s)
           </span>
           <Link to="/evidencias" className="font-medium text-brand-800 hover:underline">
             Ver evidencias

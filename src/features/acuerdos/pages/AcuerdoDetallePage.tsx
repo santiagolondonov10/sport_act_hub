@@ -183,11 +183,17 @@ export function AcuerdoDetallePage() {
                 <p className="text-sm text-gray-500">Este acuerdo aún no tiene compromisos definidos.</p>
               ) : (
                 <ul className="divide-y divide-gray-100">
-                  {compromisosAcuerdo.map((c) => (
+                  {compromisosAcuerdo.map((c) => {
+                    const marcaCompromiso = c.marcaId ? marcas.find((m) => m.id === c.marcaId) : null;
+                    return (
                     <li key={c.id} className="flex items-center justify-between gap-3 py-2.5">
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-gray-800">{c.entregable}</p>
-                        <p className="text-xs text-gray-500">Vence {formatFecha(c.fechaLimite)}</p>
+                        <div className="flex flex-wrap gap-2 text-xs text-gray-500 mt-1">
+                          {marcaCompromiso && <span>Marca: {marcaCompromiso.nombre}</span>}
+                          {c.responsableId && <span>Responsable: {c.responsableId}</span>}
+                          <span>Vence {formatFecha(c.fechaLimite)}</span>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge estado={c.estado} />
@@ -220,7 +226,8 @@ export function AcuerdoDetallePage() {
                         </button>
                       </div>
                     </li>
-                  ))}
+                  );
+                  })}
                 </ul>
               )}
             </CardContent>

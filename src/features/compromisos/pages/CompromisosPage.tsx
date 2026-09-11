@@ -11,8 +11,9 @@ import { useLanguage } from '@/lib/LanguageContext';
 import { ESTADOS_COMPROMISO } from '@/types';
 import type { Compromiso, EstadoCompromiso, Prioridad } from '@/types';
 import { formatFecha, diasHasta } from '@/lib/format';
-import { getAcuerdo, getMarca, getResponsable, responsables } from '@/data';
+import { responsables } from '@/data';
 import { useCompromisos } from '../store';
+import { useMarcas } from '@/features/marcas/store';
 import { useToast } from '@/hooks/useToast';
 import { CompromisoDetalleModal } from '../components/CompromisoDetalleModal';
 
@@ -21,6 +22,7 @@ const PRIORIDADES: Prioridad[] = ['Baja', 'Media', 'Alta', 'Urgente'];
 export function CompromisosPage() {
   const { t } = useLanguage();
   const { compromisos, cambiarEstado } = useCompromisos();
+  const { marcas } = useMarcas();
   const { mostrarToast } = useToast();
 
   const [busqueda, setBusqueda] = useState('');
@@ -105,9 +107,7 @@ export function CompromisosPage() {
             </thead>
             <tbody>
               {filtrados.map((c) => {
-                const acuerdo = getAcuerdo(c.acuerdoId);
-                const marca = acuerdo ? getMarca(acuerdo.marcaId) : undefined;
-                const responsable = getResponsable(c.responsableId);
+                const marca = c.marcaId ? marcas.find((m) => m.id === c.marcaId) : undefined;
                 const dias = diasHasta(c.fechaLimite);
                 return (
                   <tr
@@ -119,8 +119,8 @@ export function CompromisosPage() {
                       <p className="truncate font-medium text-gray-900">{c.entregable}</p>
                       <p className="truncate text-xs text-gray-500">{c.categoria}</p>
                     </td>
-                    <td className="px-4 py-3 text-gray-600">{marca?.nombre}</td>
-                    <td className="px-4 py-3 text-gray-600">{responsable?.nombre}</td>
+                    <td className="px-4 py-3 text-gray-600">{marca?.nombre || '-'}</td>
+                    <td className="px-4 py-3 text-gray-600">{c.responsableId || '-'}</td>
                     <td className="px-4 py-3">
                       <span className="text-gray-600">{formatFecha(c.fechaLimite)}</span>
                       {c.estado !== 'Cumplido' && (
