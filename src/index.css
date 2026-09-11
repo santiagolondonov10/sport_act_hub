@@ -1,0 +1,125 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Poppins', ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  /* Navy: color primario de marca (fondo de sidebar, encabezados de énfasis) */
+  --color-brand-950: #001522;
+  --color-brand-900: #00253d;
+  --color-brand-800: #003154;
+  --color-brand-700: #0a4269;
+  --color-brand-600: #16587f;
+  --color-brand-500: #256f97;
+
+  /* Lima: acento de marca, uso puntual (activo, foco, highlight) */
+  --color-accent-500: #cdf914;
+  --color-accent-600: #a8d400;
+  --color-accent-100: #f3fdc8;
+
+  /* Neutrales de interfaz */
+  --color-surface: #ffffff;
+  --color-surface-muted: #f7f8fa;
+
+  /* Semánticos de estado (independientes del acento de marca) */
+  --color-success-50: #ecfdf3;
+  --color-success-500: #12a150;
+  --color-success-700: #0a6e37;
+
+  --color-warning-50: #fffaeb;
+  --color-warning-500: #d68a00;
+  --color-warning-700: #935700;
+
+  --color-danger-50: #fef2f2;
+  --color-danger-500: #dc2626;
+  --color-danger-700: #a11414;
+
+  --color-info-50: #eff6ff;
+  --color-info-500: #2563eb;
+  --color-info-700: #1749ab;
+}
+
+html {
+  font-family: var(--font-sans);
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-surface-muted);
+  color: #101828;
+  -webkit-font-smoothing: antialiased;
+}
+
+html.dark-mode body {
+  background-color: #101923;
+  color: #e5edf5;
+}
+
+html.dark-mode .bg-white,
+html.dark-mode .bg-surface,
+html.dark-mode .dark-control {
+  background-color: #182532;
+  color: #e5edf5;
+}
+
+html.dark-mode .bg-surface-muted {
+  background-color: #101923;
+}
+
+html.dark-mode .border-gray-200,
+html.dark-mode .border-gray-300,
+html.dark-mode .border-gray-100 {
+  border-color: #304252;
+}
+
+html.dark-mode .text-gray-900,
+html.dark-mode .text-gray-950 {
+  color: #f3f7fa;
+}
+
+html.dark-mode .text-gray-700,
+html.dark-mode .text-gray-600 {
+  color: #c0ccd7;
+}
+
+html.dark-mode .text-gray-500,
+html.dark-mode .text-gray-400 {
+  color: #91a1b1;
+}
+
+html.dark-mode input,
+html.dark-mode select,
+html.dark-mode textarea {
+  background-color: #182532;
+  border-color: #405365;
+  color: #f3f7fa;
+}
+
+html.dark-mode input::placeholder,
+html.dark-mode textarea::placeholder {
+  color: #8191a1;
+}
+
+html.dark-mode .hover\:bg-gray-50:hover,
+html.dark-mode .hover\:bg-gray-100:hover {
+  background-color: #223444;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #d0d5dd;
+  border-radius: 9999px;
+  border: 2px solid var(--color-surface-muted);
+}

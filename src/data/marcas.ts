@@ -1,0 +1,138 @@
+import type { Marca } from '@/types';
+
+export const marcas: Marca[] = [
+  {
+    id: 'mar-01',
+    nombre: 'Cervecería Andina',
+    sector: 'Bebidas',
+    logoIniciales: 'CA',
+    colorMarca: '#b45309',
+    contacto: {
+      nombre: 'Ricardo Salazar',
+      cargo: 'Gerente de Patrocinios',
+      email: 'ricardo.salazar@cerveceriaandina.co',
+      telefono: '+57 300 512 4478',
+    },
+  },
+  {
+    id: 'mar-02',
+    nombre: 'Banco Meridiano',
+    sector: 'Banca y Finanzas',
+    logoIniciales: 'BM',
+    colorMarca: '#1e3a8a',
+    contacto: {
+      nombre: 'Diana Escobar',
+      cargo: 'Directora de Marca',
+      email: 'diana.escobar@meridiano.com',
+      telefono: '+57 310 884 2291',
+    },
+  },
+  {
+    id: 'mar-03',
+    nombre: 'Conecta Móvil',
+    sector: 'Telecomunicaciones',
+    logoIniciales: 'CM',
+    colorMarca: '#7c3aed',
+    contacto: {
+      nombre: 'Felipe Rendón',
+      cargo: 'Jefe de Patrocinios Deportivos',
+      email: 'felipe.rendon@conectamovil.co',
+      telefono: '+57 312 665 0093',
+    },
+  },
+  {
+    id: 'mar-04',
+    nombre: 'Rutas Retail',
+    sector: 'Retail y Moda',
+    logoIniciales: 'RR',
+    colorMarca: '#be123c',
+    contacto: {
+      nombre: 'Mariana Uribe',
+      cargo: 'Coordinadora de Marketing',
+      email: 'mariana.uribe@rutasretail.com',
+      telefono: '+57 301 774 5510',
+    },
+  },
+  {
+    id: 'mar-05',
+    nombre: 'Seguros Cóndor',
+    sector: 'Seguros',
+    logoIniciales: 'SC',
+    colorMarca: '#0f766e',
+    contacto: {
+      nombre: 'Álvaro Peña',
+      cargo: 'Gerente de Mercadeo',
+      email: 'alvaro.pena@seguroscondor.co',
+      telefono: '+57 315 220 9981',
+    },
+  },
+  {
+    id: 'mar-06',
+    nombre: 'Motors Andina',
+    sector: 'Movilidad',
+    logoIniciales: 'MA',
+    colorMarca: '#c2410c',
+    contacto: {
+      nombre: 'Sebastián Quintero',
+      cargo: 'Director Comercial',
+      email: 'sebastian.quintero@motorsandina.co',
+      telefono: '+57 320 447 1183',
+    },
+  },
+  {
+    id: 'mar-07',
+    nombre: 'NovaTech Soluciones',
+    sector: 'Tecnología',
+    logoIniciales: 'NT',
+    colorMarca: '#4338ca',
+    contacto: {
+      nombre: 'Camila Torres',
+      cargo: 'Brand Manager',
+      email: 'camila.torres@novatech.io',
+      telefono: '+57 318 992 3345',
+    },
+  },
+  {
+    id: 'mar-08',
+    nombre: 'Energía Cumbre',
+    sector: 'Energía',
+    logoIniciales: 'EC',
+    colorMarca: '#a16207',
+    contacto: {
+      nombre: 'Julián Cárdenas',
+      cargo: 'Gerente de Responsabilidad Social',
+      email: 'julian.cardenas@energiacumbre.co',
+      telefono: '+57 305 118 7762',
+    },
+  },
+  {
+    id: 'mar-09',
+    nombre: 'VidaPlus Salud',
+    sector: 'Salud',
+    logoIniciales: 'VS',
+    colorMarca: '#0369a1',
+    contacto: {
+      nombre: 'Natalia Rojas',
+      cargo: 'Directora de Mercadeo',
+      email: 'natalia.rojas@vidaplus.co',
+      telefono: '+57 311 556 8820',
+    },
+  },
+  {
+    id: 'mar-10',
+    nombre: 'Café Sierra Nevada',
+    sector: 'Agroindustria',
+    logoIniciales: 'CS',
+    colorMarca: '#065f46',
+    contacto: {
+      nombre: 'Pedro Linares',
+      cargo: 'Gerente de Marca',
+      email: 'pedro.linares@cafesierranevada.co',
+      telefono: '+57 300 229 6614',
+    },
+  },
+];
+
+export function getMarca(id: string): Marca | undefined {
+  return marcas.find((m) => m.id === id);
+}

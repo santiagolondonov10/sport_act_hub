@@ -1,0 +1,2 @@
+ALTER TABLE acuerdos ADD COLUMN IF NOT EXISTS responsable_correo VARCHAR(255) DEFAULT '';
+ALTER TABLE acuerdos ADD COLUMN IF NOT EXISTS responsable_telefono VARCHAR(20) DEFAULT '';
