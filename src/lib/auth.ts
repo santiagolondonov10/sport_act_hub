@@ -4,6 +4,8 @@ export interface AuthUser {
   username: string | null;
   subscriptionType: string;
   companiaId?: string | null;
+  companiaNombre?: string | null;
+  companiaLogo?: string | null;
   menuOptions: Array<{
     code: string;
     label: string;

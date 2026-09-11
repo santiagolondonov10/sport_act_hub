@@ -179,11 +179,13 @@ const server = createServer(async (request, response) => {
         sendJson(response, 400, { error: 'Ingresa tu usuario o correo y contraseña.' });
         return;
       }
-      const result = await pool.query<{ id: string; email: string | null; username: string | null; password_hash: string; subscription_type: string; compania_id: string | null }>(
-        `SELECT id, email, username, password_hash, subscription_type, compania_id
-         FROM auth_credentials
-         WHERE (LOWER(email) = LOWER($1) OR LOWER(username) = LOWER($1))
-           AND NOW() >= valid_from AND NOW() < valid_until
+      const result = await pool.query<{ id: string; email: string | null; username: string | null; password_hash: string; subscription_type: string; compania_id: string | null; compania_nombre: string | null; compania_logo: string | null }>(
+        `SELECT ac.id, ac.email, ac.username, ac.password_hash, ac.subscription_type, ac.compania_id,
+                c.nombre AS compania_nombre, c.logo_url AS compania_logo
+         FROM auth_credentials ac
+         LEFT JOIN companias c ON ac.compania_id = c.id
+         WHERE (LOWER(ac.email) = LOWER($1) OR LOWER(ac.username) = LOWER($1))
+           AND NOW() >= ac.valid_from AND NOW() < ac.valid_until
          LIMIT 1`,
         [identifier.trim()],
       );
@@ -194,7 +196,7 @@ const server = createServer(async (request, response) => {
       }
       await pool.query('UPDATE auth_credentials SET last_login_at = NOW(), updated_at = NOW() WHERE id = $1', [credential.id]);
       const menuOptions = await getMenuOptions(credential.subscription_type);
-      sendJson(response, 200, { user: { id: credential.id, email: credential.email, username: credential.username, subscriptionType: credential.subscription_type, companiaId: credential.compania_id, menuOptions } });
+      sendJson(response, 200, { user: { id: credential.id, email: credential.email, username: credential.username, subscriptionType: credential.subscription_type, companiaId: credential.compania_id, companiaNombre: credential.compania_nombre, companiaLogo: credential.compania_logo, menuOptions } });
     } catch {
       sendJson(response, 500, { error: 'No fue posible iniciar sesión.' });
     }

@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { X, Building2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { navItems } from '@/lib/navigation';
-import { getSessionUser, authHeaders } from '@/lib/auth';
+import { getSessionUser } from '@/lib/auth';
 import { useLanguage } from '@/lib/LanguageContext';
 import { useSidebar } from '@/lib/SidebarContext';
 import logoSportsAct from '@/assets/logo-sports-act.png';
@@ -12,32 +11,10 @@ interface SidebarProps {
   onCerrar: () => void;
 }
 
-interface Compania {
-  id: string;
-  nombre: string;
-  logo_url?: string | null;
-}
-
-
 export function Sidebar({ abiertoEnMovil, onCerrar }: SidebarProps) {
   const sessionUser = getSessionUser();
   const { t } = useLanguage();
   const { isCollapsed, toggleCollapsed } = useSidebar();
-  const [compania, setCompania] = useState<Compania | null>(null);
-
-  useEffect(() => {
-    if (sessionUser?.companiaId) {
-      const headers = new Headers();
-      const auth = authHeaders();
-      Object.entries(auth).forEach(([key, value]) => {
-        if (value) headers.set(key, value);
-      });
-      fetch(`/api/admin/companias/${sessionUser.companiaId}`, { headers })
-        .then((res) => res.json())
-        .then((data: Compania) => setCompania(data))
-        .catch(() => setCompania(null));
-    }
-  }, [sessionUser?.companiaId]);
   const pathToMenuOption: Record<string, { path: string; order: number }> = {};
   sessionUser?.menuOptions?.forEach((option) => {
     pathToMenuOption[option.path] = { path: option.path, order: option.sortOrder ?? 0 };
@@ -88,18 +65,6 @@ export function Sidebar({ abiertoEnMovil, onCerrar }: SidebarProps) {
         <div className="flex items-center justify-between gap-3 border-b border-white/10 px-5 py-5">
           <div className="flex items-center gap-3">
             <img src={logoSportsAct} alt="Sports Act" className="h-9 w-auto" />
-            {compania?.logo_url && (
-              <img
-                src={compania.logo_url}
-                alt={compania.nombre}
-                className="h-9 w-auto object-contain"
-              />
-            )}
-            {sessionUser?.companiaId && !compania?.logo_url && (
-              <div className="flex h-9 w-9 items-center justify-center rounded bg-white/5">
-                <Building2 size={18} className="text-white/40" />
-              </div>
-            )}
           </div>
           <div className="flex items-center gap-1">
             <button
