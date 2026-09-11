@@ -1764,6 +1764,17 @@ const server = createServer(async (request, response) => {
         sendJson(response, 400, { error: 'Responsable/Contacto es requerido.' });
         return;
       }
+
+      // Verificar si es un contacto de marca o un responsable de la organización
+      const isContactoMarca = String(body.responsableId).includes('-contacto');
+      if (!isContactoMarca) {
+        // Si no es contacto de marca, verificar que el responsable exista
+        const responsableExists = (await pool.query('SELECT id FROM responsables WHERE id = $1', [body.responsableId])).rows.length > 0;
+        if (!responsableExists) {
+          sendJson(response, 400, { error: 'Responsable no encontrado.' });
+          return;
+        }
+      }
       if (!body.etapa || !body.etapa.trim()) {
         sendJson(response, 400, { error: 'Etapa es requerida.' });
         return;
@@ -1776,18 +1787,34 @@ const server = createServer(async (request, response) => {
         sendJson(response, 400, { error: 'Próximo paso es requerido.' });
         return;
       }
+      if (!body.responsableInternoNombre || !String(body.responsableInternoNombre).trim()) {
+        sendJson(response, 400, { error: 'Nombre responsable interno es requerido.' });
+        return;
+      }
+      if (!body.responsableInternoCorreo || !String(body.responsableInternoCorreo).trim()) {
+        sendJson(response, 400, { error: 'Correo responsable interno es requerido.' });
+        return;
+      }
+      if (!body.responsableInternoTelefono || !String(body.responsableInternoTelefono).trim()) {
+        sendJson(response, 400, { error: 'Teléfono responsable interno es requerido.' });
+        return;
+      }
 
       const oportunidadId = `opp-${Date.now()}`;
       const result = await pool.query(
         `INSERT INTO oportunidades (
           id, compania_id, marca_id, responsable_id, etapa, valor_estimado_cop,
           probabilidad, fecha_estimada_cierre, activos_propuestos_ids, proximo_paso,
+          responsable_interno_nombre, responsable_interno_correo, responsable_interno_telefono,
           fecha_creacion, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_DATE, NOW(), NOW())
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_DATE, NOW(), NOW())
          RETURNING id, marca_id AS "marcaId", responsable_id AS "responsableId", etapa,
                    valor_estimado_cop AS "valorEstimadoCOP", probabilidad,
                    fecha_estimada_cierre AS "fechaEstimadaCierre",
                    activos_propuestos_ids AS "activosPropuestosIds", proximo_paso AS "proximoPaso",
+                   responsable_interno_nombre AS "responsableInternoNombre",
+                   responsable_interno_correo AS "responsableInternoCorreo",
+                   responsable_interno_telefono AS "responsableInternoTelefono",
                    contratos_adjuntos AS "contratosAdjuntos", documentos_adjuntos AS "documentosAdjuntos",
                    created_at AS "fechaCreacion"`,
         [
@@ -1801,6 +1828,9 @@ const server = createServer(async (request, response) => {
           body.fechaEstimadaCierre || null,
           JSON.stringify(body.activosPropuestosIds || []),
           body.proximoPaso || '',
+          body.responsableInternoNombre,
+          body.responsableInternoCorreo,
+          body.responsableInternoTelefono,
         ]
       );
       sendJson(response, 201, result.rows[0]);
@@ -1833,6 +1863,9 @@ const server = createServer(async (request, response) => {
                 valor_estimado_cop AS "valorEstimadoCOP", probabilidad,
                 fecha_estimada_cierre AS "fechaEstimadaCierre",
                 activos_propuestos_ids AS "activosPropuestosIds", proximo_paso AS "proximoPaso",
+                responsable_interno_nombre AS "responsableInternoNombre",
+                responsable_interno_correo AS "responsableInternoCorreo",
+                responsable_interno_telefono AS "responsableInternoTelefono",
                 contratos_adjuntos AS "contratosAdjuntos", documentos_adjuntos AS "documentosAdjuntos",
                 created_at AS "fechaCreacion"
          FROM oportunidades WHERE id = $1 AND compania_id = $2`,
@@ -1914,6 +1947,18 @@ const server = createServer(async (request, response) => {
         updates.push(`documentos_adjuntos = $${++paramCount}`);
         values.push(JSON.stringify(body.documentosAdjuntos || []));
       }
+      if (body.responsableInternoNombre !== undefined) {
+        updates.push(`responsable_interno_nombre = $${++paramCount}`);
+        values.push(body.responsableInternoNombre);
+      }
+      if (body.responsableInternoCorreo !== undefined) {
+        updates.push(`responsable_interno_correo = $${++paramCount}`);
+        values.push(body.responsableInternoCorreo);
+      }
+      if (body.responsableInternoTelefono !== undefined) {
+        updates.push(`responsable_interno_telefono = $${++paramCount}`);
+        values.push(body.responsableInternoTelefono);
+      }
 
       if (updates.length === 0) {
         sendJson(response, 400, { error: 'No fields to update.' });
@@ -1937,6 +1982,9 @@ const server = createServer(async (request, response) => {
                 valor_estimado_cop AS "valorEstimadoCOP", probabilidad,
                 fecha_estimada_cierre AS "fechaEstimadaCierre",
                 activos_propuestos_ids AS "activosPropuestosIds", proximo_paso AS "proximoPaso",
+                responsable_interno_nombre AS "responsableInternoNombre",
+                responsable_interno_correo AS "responsableInternoCorreo",
+                responsable_interno_telefono AS "responsableInternoTelefono",
                 contratos_adjuntos AS "contratosAdjuntos", documentos_adjuntos AS "documentosAdjuntos",
                 created_at AS "fechaCreacion"
          FROM oportunidades WHERE id = $1 AND compania_id = $2`,
@@ -1958,7 +2006,8 @@ const server = createServer(async (request, response) => {
   }
 
   // DELETE /api/oportunidades/:id - Delete an oportunidad
-  if (request.method === 'DELETE' && oportunidadMatch) {
+  const oportunidadDeleteMatch = request.url?.match(/^\/api\/oportunidades\/([^/]+)$/);
+  if (request.method === 'DELETE' && oportunidadDeleteMatch) {
     try {
       const userId = request.headers['x-user-id'];
       if (typeof userId !== 'string' || !userId) {
@@ -1970,7 +2019,7 @@ const server = createServer(async (request, response) => {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
       }
-      const oportunidadId = decodeURIComponent(oportunidadMatch[1]);
+      const oportunidadId = decodeURIComponent(oportunidadDeleteMatch[1]);
 
       const deleteResult = await pool.query(
         'DELETE FROM oportunidades WHERE id = $1 AND compania_id = $2',

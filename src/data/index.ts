@@ -1,4 +1,5 @@
 import type { Activo, Oportunidad, Acuerdo, Compromiso, Evidencia, Reporte, Marca, Responsable, SegmentoAudiencia, CanalAudiencia, CampanaAudiencia, CapacidadActivacion, EstadoIntegracionGO } from '@/types';
+import { responsables as responsablesData } from './responsables.js';
 
 export const activos: Activo[] = [];
 export const oportunidades: Oportunidad[] = [];
@@ -7,7 +8,7 @@ export const compromisos: Compromiso[] = [];
 export const evidencias: Evidencia[] = [];
 export const reportes: Reporte[] = [];
 export const marcas: Marca[] = [];
-export const responsables: Responsable[] = [];
+export const responsables: Responsable[] = responsablesData;
 export const segmentosAudiencia: SegmentoAudiencia[] = [];
 export const canalesAudiencia: CanalAudiencia[] = [];
 export const campanasAudiencia: CampanaAudiencia[] = [];

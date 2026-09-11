@@ -653,14 +653,24 @@ export function OportunidadDetallePage() {
 
           <Card>
             <CardHeader title="Responsable interno" />
-            <CardContent className="flex items-start gap-4">
-              <span
-                className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white bg-amber-500"
-              >
-                {iniciales(oportunidad.responsableId)}
-              </span>
-              <div className="min-w-0">
-                <p className="text-base font-semibold text-gray-900">{oportunidad.responsableId}</p>
+            <CardContent className="space-y-3">
+              <div className="flex items-start gap-3">
+                <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white bg-amber-500">
+                  {iniciales(oportunidad.responsableInternoNombre || 'RI')}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-base font-semibold text-gray-900">{oportunidad.responsableInternoNombre || 'No especificado'}</p>
+                </div>
+              </div>
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Correo</span>
+                  <span className="text-gray-700">{oportunidad.responsableInternoCorreo || '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Teléfono</span>
+                  <span className="text-gray-700">{oportunidad.responsableInternoTelefono || '-'}</span>
+                </div>
               </div>
             </CardContent>
           </Card>

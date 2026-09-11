@@ -53,6 +53,9 @@ export function OportunidadFormModal({ abierto, onCerrar, onGuardar, oportunidad
   const [probabilidad, setProbabilidad] = useState(String(oportunidadInicial?.probabilidad ?? '20'));
   const [fechaEstimadaCierre, setFechaEstimadaCierre] = useState(formatDateForInput(oportunidadInicial?.fechaEstimadaCierre));
   const [proximoPaso, setProximoPaso] = useState(oportunidadInicial?.proximoPaso ?? '');
+  const [responsableInternoNombre, setResponsableInternoNombre] = useState(oportunidadInicial?.responsableInternoNombre ?? '');
+  const [responsableInternoCorreo, setResponsableInternoCorreo] = useState(oportunidadInicial?.responsableInternoCorreo ?? '');
+  const [responsableInternoTelefono, setResponsableInternoTelefono] = useState(oportunidadInicial?.responsableInternoTelefono ?? '');
   const [activosSeleccionados, setActivosSeleccionados] = useState<string[]>(
     oportunidadInicial?.activosPropuestosIds ?? [],
   );
@@ -140,7 +143,7 @@ export function OportunidadFormModal({ abierto, onCerrar, onGuardar, oportunidad
 
         setContactosDisponibles(contactos);
         if (!responsableId && contactos.length > 0) {
-          setResponsableId(contactos[0].nombre);
+          setResponsableId(contactos[0].id);
         }
       }
     }
@@ -188,6 +191,9 @@ export function OportunidadFormModal({ abierto, onCerrar, onGuardar, oportunidad
       fechaEstimadaCierre,
       activosPropuestosIds: activosSeleccionados,
       proximoPaso,
+      responsableInternoNombre,
+      responsableInternoCorreo,
+      responsableInternoTelefono,
     });
     onCerrar();
   }
@@ -213,14 +219,10 @@ export function OportunidadFormModal({ abierto, onCerrar, onGuardar, oportunidad
             label="Responsable (Contacto)"
             value={responsableId}
             onChange={(e) => setResponsableId(e.target.value)}
-            options={
-              contactosDisponibles.length > 0
-                ? contactosDisponibles.map((c) => ({
-                    value: c.nombre,
-                    label: c.nombre,
-                  }))
-                : responsables.map((r) => ({ value: r.nombre, label: r.nombre }))
-            }
+            options={contactosDisponibles.map((c) => ({
+              value: c.id,
+              label: c.nombre,
+            }))}
             required
           />
         </div>
@@ -295,6 +297,30 @@ export function OportunidadFormModal({ abierto, onCerrar, onGuardar, oportunidad
           rows={2}
           required
         />
+        <div className="border-t border-gray-100 pt-4">
+          <h4 className="mb-3 text-sm font-semibold text-gray-900">Responsable Interno</h4>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <TextField
+              label="Nombre"
+              value={responsableInternoNombre}
+              onChange={(e) => setResponsableInternoNombre(e.target.value)}
+              required
+            />
+            <TextField
+              label="Correo"
+              type="email"
+              value={responsableInternoCorreo}
+              onChange={(e) => setResponsableInternoCorreo(e.target.value)}
+              required
+            />
+            <TextField
+              label="Teléfono"
+              value={responsableInternoTelefono}
+              onChange={(e) => setResponsableInternoTelefono(e.target.value)}
+              required
+            />
+          </div>
+        </div>
         <div className="flex justify-end gap-2 border-t border-gray-100 pt-4">
           <Button type="button" variante="secundario" onClick={onCerrar}>
             Cancelar
