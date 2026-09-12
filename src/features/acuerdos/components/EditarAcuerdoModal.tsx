@@ -24,8 +24,8 @@ export function EditarAcuerdoModal({ abierto, onCerrar, acuerdo, onAcuerdoActual
   const [formularioAcuerdo, setFormularioAcuerdo] = useState({
     nombre: acuerdo.nombre,
     responsableId: acuerdo.responsableId,
-    responsableCorreo: '',
-    responsableTelefono: '',
+    responsableCorreo: acuerdo.responsableCorreo || '',
+    responsableTelefono: acuerdo.responsableTelefono || '',
     valorCOP: acuerdo.valorCOP,
     fechaInicio: acuerdo.fechaInicio,
     fechaFin: acuerdo.fechaFin,
@@ -40,8 +40,8 @@ export function EditarAcuerdoModal({ abierto, onCerrar, acuerdo, onAcuerdoActual
       setFormularioAcuerdo({
         nombre: acuerdo.nombre,
         responsableId: acuerdo.responsableId,
-        responsableCorreo: '',
-        responsableTelefono: '',
+        responsableCorreo: acuerdo.responsableCorreo || '',
+        responsableTelefono: acuerdo.responsableTelefono || '',
         valorCOP: acuerdo.valorCOP,
         fechaInicio: acuerdo.fechaInicio,
         fechaFin: acuerdo.fechaFin,
@@ -142,34 +142,58 @@ export function EditarAcuerdoModal({ abierto, onCerrar, acuerdo, onAcuerdoActual
           />
         </div>
 
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Responsable *</label>
+          <input
+            type="text"
+            name="responsableId"
+            value={formularioAcuerdo.responsableId}
+            onChange={handleCambioAcuerdo}
+            placeholder="Nombre del responsable"
+            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-brand-600 focus:outline-none"
+          />
+        </div>
+
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Responsable *</label>
+            <label className="block text-sm font-medium text-gray-700">Correo Responsable</label>
             <input
-              type="text"
-              name="responsableId"
-              value={formularioAcuerdo.responsableId}
+              type="email"
+              name="responsableCorreo"
+              value={formularioAcuerdo.responsableCorreo}
               onChange={handleCambioAcuerdo}
-              placeholder="Nombre del responsable"
+              placeholder="correo@ejemplo.com"
               className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-brand-600 focus:outline-none"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Estado</label>
-            <select
-              name="estado"
-              value={formularioAcuerdo.estado}
+            <label className="block text-sm font-medium text-gray-700">Teléfono Responsable</label>
+            <input
+              type="tel"
+              name="responsableTelefono"
+              value={formularioAcuerdo.responsableTelefono}
               onChange={handleCambioAcuerdo}
+              placeholder="+57 300 123 4567"
               className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-brand-600 focus:outline-none"
-            >
-              <option value="Borrador">Borrador</option>
-              <option value="Activo">Activo</option>
-              <option value="Próximo a vencer">Próximo a vencer</option>
-              <option value="Finalizado">Finalizado</option>
-              <option value="Cancelado">Cancelado</option>
-            </select>
+            />
           </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Estado</label>
+          <select
+            name="estado"
+            value={formularioAcuerdo.estado}
+            onChange={handleCambioAcuerdo}
+            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-brand-600 focus:outline-none"
+          >
+            <option value="Borrador">Borrador</option>
+            <option value="Activo">Activo</option>
+            <option value="Próximo a vencer">Próximo a vencer</option>
+            <option value="Finalizado">Finalizado</option>
+            <option value="Cancelado">Cancelado</option>
+          </select>
         </div>
 
         <div>

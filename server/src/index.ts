@@ -2074,10 +2074,10 @@ const server = createServer(async (request, response) => {
 
       const acuerdoId = `acuerdo-${Date.now()}`;
       const result = await pool.query(
-        `INSERT INTO acuerdos (id, nombre, marca_id, oportunidad_origen_id, responsable_id, valor_cop, fecha_inicio, fecha_fin, estado, notas_renovacion, interes_renovacion, activos_incluidos_ids, compania_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-         RETURNING id, nombre, marca_id AS "marcaId", oportunidad_origen_id AS "oportunidadOrigenId", responsable_id AS "responsableId", valor_cop AS "valorCOP", TO_CHAR(fecha_inicio, 'YYYY-MM-DD') AS "fechaInicio", TO_CHAR(fecha_fin, 'YYYY-MM-DD') AS "fechaFin", estado, notas_renovacion AS "notasRenovacion", interes_renovacion AS "interesRenovacion", activos_incluidos_ids AS "activosIncluidosIds"`,
-        [acuerdoId, body.nombre, body.marcaId, body.oportunidadOrigenId, body.responsableId, body.valorCOP, body.fechaInicio, body.fechaFin, body.estado, body.notasRenovacion, body.interesRenovacion, JSON.stringify(body.activosIncluidosIds || []), companiaId]
+        `INSERT INTO acuerdos (id, nombre, marca_id, oportunidad_origen_id, responsable_id, responsable_correo, responsable_telefono, valor_cop, fecha_inicio, fecha_fin, estado, notas_renovacion, interes_renovacion, activos_incluidos_ids, compania_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+         RETURNING id, nombre, marca_id AS "marcaId", oportunidad_origen_id AS "oportunidadOrigenId", responsable_id AS "responsableId", responsable_correo AS "responsableCorreo", responsable_telefono AS "responsableTelefono", valor_cop AS "valorCOP", TO_CHAR(fecha_inicio, 'YYYY-MM-DD') AS "fechaInicio", TO_CHAR(fecha_fin, 'YYYY-MM-DD') AS "fechaFin", estado, notas_renovacion AS "notasRenovacion", interes_renovacion AS "interesRenovacion", activos_incluidos_ids AS "activosIncluidosIds"`,
+        [acuerdoId, body.nombre, body.marcaId, body.oportunidadOrigenId, body.responsableId, body.responsableCorreo || null, body.responsableTelefono || null, body.valorCOP, body.fechaInicio, body.fechaFin, body.estado, body.notasRenovacion, body.interesRenovacion, JSON.stringify(body.activosIncluidosIds || []), companiaId]
       );
 
       sendJson(response, 201, normalizeAcuerdo(result.rows[0]));
@@ -2105,18 +2105,23 @@ const server = createServer(async (request, response) => {
       }
 
       const result = await pool.query(
-        `SELECT id, nombre, marca_id AS "marcaId", oportunidad_origen_id AS "oportunidadOrigenId",
-                responsable_id AS "responsableId", valor_cop AS "valorCOP",
-                TO_CHAR(fecha_inicio, 'YYYY-MM-DD') AS "fechaInicio", TO_CHAR(fecha_fin, 'YYYY-MM-DD') AS "fechaFin", estado,
-                notas_renovacion AS "notasRenovacion", interes_renovacion AS "interesRenovacion",
-                activos_incluidos_ids AS "activosIncluidosIds"
-         FROM acuerdos WHERE compania_id = $1 ORDER BY created_at DESC`,
+        `SELECT a.id, a.nombre, a.marca_id AS "marcaId", a.oportunidad_origen_id AS "oportunidadOrigenId",
+                a.responsable_id AS "responsableId", COALESCE(ac.username, ac.email) AS "responsableNombre",
+                a.responsable_correo AS "responsableCorreo", a.responsable_telefono AS "responsableTelefono",
+                a.valor_cop AS "valorCOP",
+                TO_CHAR(a.fecha_inicio, 'YYYY-MM-DD') AS "fechaInicio", TO_CHAR(a.fecha_fin, 'YYYY-MM-DD') AS "fechaFin", a.estado,
+                a.notas_renovacion AS "notasRenovacion", a.interes_renovacion AS "interesRenovacion",
+                a.activos_incluidos_ids AS "activosIncluidosIds"
+         FROM acuerdos a
+         LEFT JOIN auth_credentials ac ON a.responsable_id::text = ac.id::text
+         WHERE a.compania_id = $1 ORDER BY a.created_at DESC`,
         [companiaId]
       );
 
       sendJson(response, 200, result.rows.map(normalizeAcuerdo));
       return;
     } catch (error) {
+      console.error('Error fetching acuerdos:', error instanceof Error ? error.message : error);
       sendJson(response, 500, { error: 'No fue posible obtener los acuerdos.' });
       return;
     }
@@ -2139,12 +2144,16 @@ const server = createServer(async (request, response) => {
       const oportunidadId = decodeURIComponent(oportunidadAcuerdoMatch[1]);
 
       const result = await pool.query(
-        `SELECT id, nombre, marca_id AS "marcaId", oportunidad_origen_id AS "oportunidadOrigenId",
-                responsable_id AS "responsableId", valor_cop AS "valorCOP",
-                TO_CHAR(fecha_inicio, 'YYYY-MM-DD') AS "fechaInicio", TO_CHAR(fecha_fin, 'YYYY-MM-DD') AS "fechaFin", estado,
-                notas_renovacion AS "notasRenovacion", interes_renovacion AS "interesRenovacion",
-                activos_incluidos_ids AS "activosIncluidosIds"
-         FROM acuerdos WHERE oportunidad_origen_id = $1 AND compania_id = $2 LIMIT 1`,
+        `SELECT a.id, a.nombre, a.marca_id AS "marcaId", a.oportunidad_origen_id AS "oportunidadOrigenId",
+                a.responsable_id AS "responsableId", COALESCE(ac.username, ac.email) AS "responsableNombre",
+                a.responsable_correo AS "responsableCorreo", a.responsable_telefono AS "responsableTelefono",
+                a.valor_cop AS "valorCOP",
+                TO_CHAR(a.fecha_inicio, 'YYYY-MM-DD') AS "fechaInicio", TO_CHAR(a.fecha_fin, 'YYYY-MM-DD') AS "fechaFin", a.estado,
+                a.notas_renovacion AS "notasRenovacion", a.interes_renovacion AS "interesRenovacion",
+                a.activos_incluidos_ids AS "activosIncluidosIds"
+         FROM acuerdos a
+         LEFT JOIN auth_credentials ac ON a.responsable_id::text = ac.id::text
+         WHERE a.oportunidad_origen_id = $1 AND a.compania_id = $2 LIMIT 1`,
         [oportunidadId, companiaId]
       );
 
@@ -2190,6 +2199,14 @@ const server = createServer(async (request, response) => {
         updates.push(`responsable_id = $${++paramCount}`);
         values.push(body.responsableId);
       }
+      if (body.responsableCorreo !== undefined) {
+        updates.push(`responsable_correo = $${++paramCount}`);
+        values.push(body.responsableCorreo || null);
+      }
+      if (body.responsableTelefono !== undefined) {
+        updates.push(`responsable_telefono = $${++paramCount}`);
+        values.push(body.responsableTelefono || null);
+      }
       if (body.valorCOP !== undefined) {
         updates.push(`valor_cop = $${++paramCount}`);
         values.push(body.valorCOP);
@@ -2228,7 +2245,7 @@ const server = createServer(async (request, response) => {
 
       const result = await pool.query(
         `UPDATE acuerdos SET ${updates.join(', ')} WHERE id = $1 AND compania_id = $2
-         RETURNING id, nombre, marca_id AS "marcaId", oportunidad_origen_id AS "oportunidadOrigenId", responsable_id AS "responsableId", valor_cop AS "valorCOP", TO_CHAR(fecha_inicio, 'YYYY-MM-DD') AS "fechaInicio", TO_CHAR(fecha_fin, 'YYYY-MM-DD') AS "fechaFin", estado, notas_renovacion AS "notasRenovacion", interes_renovacion AS "interesRenovacion", activos_incluidos_ids AS "activosIncluidosIds"`,
+         RETURNING id, nombre, marca_id AS "marcaId", oportunidad_origen_id AS "oportunidadOrigenId", responsable_id AS "responsableId", responsable_correo AS "responsableCorreo", responsable_telefono AS "responsableTelefono", valor_cop AS "valorCOP", TO_CHAR(fecha_inicio, 'YYYY-MM-DD') AS "fechaInicio", TO_CHAR(fecha_fin, 'YYYY-MM-DD') AS "fechaFin", estado, notas_renovacion AS "notasRenovacion", interes_renovacion AS "interesRenovacion", activos_incluidos_ids AS "activosIncluidosIds"`,
         values
       );
 

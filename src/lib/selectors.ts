@@ -39,6 +39,17 @@ export function getCumplimientoPorAcuerdo(acuerdoId: string): number {
   return Math.round((cumplidos / delAcuerdo.length) * 100);
 }
 
+export function getTiempoConsumidoPorAcuerdo(fechaInicio: string, fechaFin: string): number {
+  const inicio = new Date(fechaInicio);
+  const fin = new Date(fechaFin);
+  const hoy = new Date();
+
+  const diasTotales = Math.max(1, Math.floor((fin.getTime() - inicio.getTime()) / (1000 * 60 * 60 * 24)));
+  const diasTranscurridos = Math.max(0, Math.floor((hoy.getTime() - inicio.getTime()) / (1000 * 60 * 60 * 24)));
+
+  return Math.round((diasTranscurridos / diasTotales) * 100);
+}
+
 export function getCumplimientoGeneral(): number {
   if (compromisos.length === 0) return 0;
   const cumplidos = compromisos.filter((c) => c.estado === 'Cumplido').length;

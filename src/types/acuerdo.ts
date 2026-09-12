@@ -11,6 +11,7 @@ export interface Acuerdo {
   marcaId: string;
   oportunidadOrigenId?: string;
   responsableId: string;
+  responsableNombre?: string;
   responsableCorreo?: string;
   responsableTelefono?: string;
   valorCOP: number;

@@ -10,10 +10,11 @@ import { ProgressBar } from '@/components/ui/ProgressBar';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useLanguage } from '@/lib/LanguageContext';
 import { formatCOP, formatCOPCompact, formatFecha } from '@/lib/format';
-import { getCumplimientoPorAcuerdo } from '@/lib/selectors';
+import { getCumplimientoPorAcuerdo, getTiempoConsumidoPorAcuerdo } from '@/lib/selectors';
 import type { EstadoAcuerdo } from '@/types';
 import { useAcuerdos } from '../store';
 import { useMarcas } from '@/features/marcas/store';
+import { AlertaSemaforoAcuerdo } from '../components/AlertaSemaforoAcuerdo';
 
 const ESTADOS: EstadoAcuerdo[] = ['Borrador', 'Activo', 'Próximo a vencer', 'Finalizado', 'Cancelado'];
 
@@ -80,6 +81,7 @@ export function AcuerdosListPage() {
                 <th className="px-4 py-3 font-medium">{t('table.marca')}</th>
                 <th className="px-4 py-3 font-medium">{t('table.valor')}</th>
                 <th className="px-4 py-3 font-medium">{t('table.vigencia')}</th>
+                <th className="px-4 py-3 font-medium">Alerta</th>
                 <th className="px-4 py-3 font-medium">{t('table.cumplimiento')}</th>
                 <th className="px-4 py-3 font-medium">{t('table.estado')}</th>
               </tr>
@@ -99,6 +101,9 @@ export function AcuerdosListPage() {
                     <td className="px-4 py-3 text-gray-600">{formatCOP(acuerdo.valorCOP)}</td>
                     <td className="px-4 py-3 text-gray-500">
                       {formatFecha(acuerdo.fechaInicio)} – {formatFecha(acuerdo.fechaFin)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <AlertaSemaforoAcuerdo tiempoConsumido={getTiempoConsumidoPorAcuerdo(acuerdo.fechaInicio, acuerdo.fechaFin)} />
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">

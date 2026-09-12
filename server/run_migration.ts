@@ -12,7 +12,7 @@ const pool = new Pool({
 
 async function runMigration() {
   try {
-    const migrationPath = path.join(__dirname, 'db/migrations/043_add_contact_preferences_to_marcas.sql');
+    const migrationPath = path.join(__dirname, 'db/migrations/044_add_responsable_contact_to_acuerdos.sql');
     const sql = fs.readFileSync(migrationPath, 'utf8');
 
     console.log('Executing migration...');

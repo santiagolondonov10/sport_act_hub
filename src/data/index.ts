@@ -32,8 +32,8 @@ export function getMarca(_id: string): Marca | undefined {
   return undefined;
 }
 
-export function getResponsable(_id: string): Responsable | undefined {
-  return undefined;
+export function getResponsable(id: string): Responsable | undefined {
+  return responsables.find((r) => r.id === id);
 }
 
 export function getCompromisosPorAcuerdo(_acuerdoId: string): Compromiso[] {

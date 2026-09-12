@@ -9,7 +9,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { formatCOP, formatFecha } from '@/lib/format';
 import { getResponsable, getReportePorAcuerdo } from '@/data';
-import { getCumplimientoPorAcuerdo } from '@/lib/selectors';
+import { getCumplimientoPorAcuerdo, getTiempoConsumidoPorAcuerdo } from '@/lib/selectors';
 import { useToast } from '@/hooks/useToast';
 import { useAcuerdos } from '../store';
 import { useMarcas } from '@/features/marcas/store';
@@ -17,6 +17,7 @@ import { useActivos } from '@/features/activos/store';
 import { useCompromisos } from '@/features/compromisos/store';
 import { EditarAcuerdoModal } from '../components/EditarAcuerdoModal';
 import { CompromisoFormModal } from '@/features/compromisos/components/CompromisoFormModal';
+import { AlertaSemaforoAcuerdo } from '../components/AlertaSemaforoAcuerdo';
 
 export function AcuerdoDetallePage() {
   const navigate = useNavigate();
@@ -114,7 +115,7 @@ export function AcuerdoDetallePage() {
           <Card>
             <CardHeader title="Resumen del acuerdo" action={<Badge estado={acuerdo.estado} />} />
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
                 <div>
                   <p className="text-xs text-gray-500">Valor del acuerdo</p>
                   <p className="text-lg font-semibold text-gray-900">{formatCOP(acuerdo.valorCOP)}</p>
@@ -124,6 +125,10 @@ export function AcuerdoDetallePage() {
                   <p className="text-sm font-medium text-gray-900">
                     {formatFecha(acuerdo.fechaInicio)} – {formatFecha(acuerdo.fechaFin)}
                   </p>
+                </div>
+                <div>
+                  <p className="mb-1 text-xs text-gray-500">Alerta</p>
+                  <AlertaSemaforoAcuerdo tiempoConsumido={getTiempoConsumidoPorAcuerdo(acuerdo.fechaInicio, acuerdo.fechaFin)} />
                 </div>
                 <div>
                   <p className="mb-1 text-xs text-gray-500">Cumplimiento</p>
@@ -262,17 +267,33 @@ export function AcuerdoDetallePage() {
 
           <Card>
             <CardHeader title="Responsable interno" />
-            <CardContent className="flex items-center gap-3">
-              <span
-                className="flex h-9 w-9 items-center justify-center rounded-full text-xs font-semibold text-white"
-                style={{ backgroundColor: responsable?.avatarColor }}
-              >
-                {responsable?.iniciales}
-              </span>
-              <div>
-                <p className="text-sm font-medium text-gray-900">{responsable?.nombre}</p>
-                <p className="text-xs text-gray-500">{responsable?.cargo}</p>
+            <CardContent className="space-y-3">
+              <div className="flex items-center gap-3">
+                <span
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-xs font-semibold text-white shrink-0"
+                  style={{ backgroundColor: responsable?.avatarColor || '#6b7280' }}
+                >
+                  {acuerdo.responsableNombre?.slice(0, 2).toUpperCase() || responsable?.iniciales || acuerdo.responsableId?.slice(0, 2).toUpperCase()}
+                </span>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{acuerdo.responsableNombre || responsable?.nombre || acuerdo.responsableId || 'Sin asignar'}</p>
+                  {responsable?.cargo && <p className="text-xs text-gray-500">{responsable.cargo}</p>}
+                </div>
               </div>
+              {(acuerdo.responsableCorreo || acuerdo.responsableTelefono) && (
+                <div className="space-y-2 border-t border-gray-100 pt-3">
+                  {acuerdo.responsableCorreo && (
+                    <p className="flex items-center gap-2 text-sm text-gray-600">
+                      <Mail size={14} className="text-gray-400" /> {acuerdo.responsableCorreo}
+                    </p>
+                  )}
+                  {acuerdo.responsableTelefono && (
+                    <p className="flex items-center gap-2 text-sm text-gray-600">
+                      <Phone size={14} className="text-gray-400" /> {acuerdo.responsableTelefono}
+                    </p>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 
