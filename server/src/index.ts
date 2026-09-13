@@ -4,7 +4,12 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import bcrypt from 'bcryptjs';
+import { config } from 'dotenv';
+import * as XLSX from 'xlsx';
 import { pool } from './db.js';
+
+// Load environment variables from .env file
+config();
 
 const __dirname = resolve(fileURLToPath(import.meta.url), '../..');
 
@@ -2708,6 +2713,253 @@ const server = createServer(async (request, response) => {
     } catch (error) {
       console.error('Error updating evidencia:', error);
       sendJson(response, 500, { error: 'No fue posible actualizar la evidencia.' });
+      return;
+    }
+  }
+
+  // POST /api/asistente/pregunta - AI Assistant question handler
+  if (request.method === 'POST' && request.url === '/api/asistente/pregunta') {
+    try {
+      const userId = request.headers['x-user-id'];
+      if (typeof userId !== 'string' || !userId) {
+        sendJson(response, 401, { error: 'Se requiere autenticación.' });
+        return;
+      }
+      const companiaId = await getUserCompaniaId(userId);
+      if (!companiaId) {
+        sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
+        return;
+      }
+
+      const body = await readJson(request) as any;
+      const pregunta = body.pregunta;
+
+      if (!pregunta || typeof pregunta !== 'string') {
+        sendJson(response, 400, { error: 'Se requiere una pregunta.' });
+        return;
+      }
+
+      const openaiKey = process.env.OPENAI_API_KEY;
+      if (!openaiKey) {
+        sendJson(response, 500, { error: 'Configuración de OpenAI no disponible.' });
+        return;
+      }
+
+      // Get relevant data from database for context
+      const [marcasResult, acuerdosResult, compromisosResult, oportunidadesResult] = await Promise.all([
+        pool.query(`SELECT id, nombre, persona_contacto_1, correo_contacto_1 FROM marcas WHERE compania_id = $1 LIMIT 10`, [companiaId]),
+        pool.query(`SELECT id, nombre, marca_id, estado FROM acuerdos WHERE compania_id = $1 LIMIT 10`, [companiaId]),
+        pool.query(`SELECT id, acuerdo_id, entregable, estado, progreso FROM compromisos WHERE compania_id = $1 LIMIT 10`, [companiaId]),
+        pool.query(`SELECT id, marca_id, etapa FROM oportunidades WHERE compania_id = $1 LIMIT 10`, [companiaId]),
+      ]);
+
+      const contexto = `
+Eres un asistente experto en gestión de patrocinios deportivos. Tienes acceso a los siguientes datos:
+
+MARCAS (Patrocinadores):
+${marcasResult.rows.map(m => `- ${m.nombre}`).join('\n')}
+
+ACUERDOS (Patrocinios cerrados):
+${acuerdosResult.rows.map(a => `- ${a.nombre} (${a.estado})`).join('\n')}
+
+COMPROMISOS (Entregas pactadas):
+${compromisosResult.rows.map(c => `- ${c.entregable} (${c.estado})`).join('\n')}
+
+OPORTUNIDADES (Pipeline comercial):
+${oportunidadesResult.rows.map(o => `- Etapa: ${o.etapa}`).join('\n')}
+
+IMPORTANTE - INSTRUCCIONES PARA GENERAR ARCHIVOS:
+Si el usuario pide un reporte, archivo, o cualquier tipo de descarga (ej: "dame un reporte", "genérame un archivo", "quiero un Excel", etc.),
+debes responder COMENZANDO con una de estas líneas (sin el símbolo #):
+- #GENERAR_ACUERDOS# si pide un archivo sobre acuerdos
+- #GENERAR_COMPROMISOS# si pide un archivo sobre compromisos
+- #GENERAR_OPORTUNIDADES# si pide un archivo sobre oportunidades
+- #GENERAR_MARCAS# si pide un archivo sobre marcas
+
+Luego continúa con tu respuesta normal en español.
+
+Ejemplo: Si te piden "Dame un reporte de acuerdos", responde:
+"#GENERAR_ACUERDOS# Aquí está el reporte de todos los acuerdos activos..."
+
+Responde a la siguiente pregunta en español de forma clara y concisa:
+      `;
+
+      const messages = [
+        {
+          role: 'system' as const,
+          content: contexto,
+        },
+        {
+          role: 'user' as const,
+          content: pregunta,
+        },
+      ];
+
+      const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openaiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-3.5-turbo',
+          messages,
+          max_tokens: 500,
+          temperature: 0.7,
+        }),
+      });
+
+      if (!openaiResponse.ok) {
+        const errorData = await openaiResponse.json().catch(() => ({}));
+        console.error('OpenAI API error:', errorData);
+        sendJson(response, 500, { error: 'Error al procesar la pregunta con IA.' });
+        return;
+      }
+
+      const openaiData = await openaiResponse.json();
+      let respuesta = openaiData.choices?.[0]?.message?.content || 'No pude generar una respuesta.';
+
+      let datosRespuesta: any = { respuesta };
+
+      // Detectar marcadores de archivo en la respuesta
+      const marcadoresArchivo = [
+        { marcador: '#GENERAR_ACUERDOS#', tipo: 'acuerdos' },
+        { marcador: '#GENERAR_COMPROMISOS#', tipo: 'compromisos' },
+        { marcador: '#GENERAR_OPORTUNIDADES#', tipo: 'oportunidades' },
+        { marcador: '#GENERAR_MARCAS#', tipo: 'marcas' },
+      ];
+
+      let tipoArchivoDetectado: string | null = null;
+
+      for (const { marcador, tipo } of marcadoresArchivo) {
+        if (respuesta.includes(marcador)) {
+          tipoArchivoDetectado = tipo;
+          // Remover el marcador de la respuesta que se muestra al usuario
+          respuesta = respuesta.replace(marcador, '').trim();
+          break;
+        }
+      }
+
+      datosRespuesta.respuesta = respuesta;
+
+      // Si se detectó un marcador, generar el archivo
+      if (tipoArchivoDetectado) {
+        let datos: any[] = [];
+
+        if (tipoArchivoDetectado === 'acuerdos') {
+          const resultado = await pool.query(
+            `SELECT id, nombre, marca_id, estado FROM acuerdos WHERE compania_id = $1 ORDER BY nombre`,
+            [companiaId]
+          );
+          datos = resultado.rows;
+        } else if (tipoArchivoDetectado === 'compromisos') {
+          const resultado = await pool.query(
+            `SELECT id, acuerdo_id, entregable, estado, progreso FROM compromisos WHERE compania_id = $1 ORDER BY entregable`,
+            [companiaId]
+          );
+          datos = resultado.rows;
+        } else if (tipoArchivoDetectado === 'oportunidades') {
+          const resultado = await pool.query(
+            `SELECT id, marca_id, etapa FROM oportunidades WHERE compania_id = $1 ORDER BY etapa`,
+            [companiaId]
+          );
+          datos = resultado.rows;
+        } else if (tipoArchivoDetectado === 'marcas') {
+          const resultado = await pool.query(
+            `SELECT id, nombre, persona_contacto_1, correo_contacto_1 FROM marcas WHERE compania_id = $1 ORDER BY nombre`,
+            [companiaId]
+          );
+          datos = resultado.rows;
+        }
+
+        // Generar Excel
+        if (datos.length > 0) {
+          const ws = XLSX.utils.json_to_sheet(datos);
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, 'Datos');
+          const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' });
+          const base64 = buffer.toString('base64');
+
+          datosRespuesta.archivo = base64;
+          datosRespuesta.nombreArchivo = `${tipoArchivoDetectado.charAt(0).toUpperCase() + tipoArchivoDetectado.slice(1)}.xlsx`;
+          datosRespuesta.tipoArchivo = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        }
+      }
+
+      sendJson(response, 200, datosRespuesta);
+      return;
+    } catch (error) {
+      console.error('Error in assistant endpoint:', error);
+      console.error('Error message:', error instanceof Error ? error.message : String(error));
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      sendJson(response, 500, { error: 'Error interno al procesar la pregunta.' });
+      return;
+    }
+  }
+
+  // POST /api/asistente/generar-reporte - Generate Excel report
+  if (request.method === 'POST' && request.url === '/api/asistente/generar-reporte') {
+    try {
+      const userId = request.headers['x-user-id'];
+      if (typeof userId !== 'string' || !userId) {
+        sendJson(response, 401, { error: 'Se requiere autenticación.' });
+        return;
+      }
+      const companiaId = await getUserCompaniaId(userId);
+      if (!companiaId) {
+        sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
+        return;
+      }
+
+      const body = await readJson(request) as any;
+      const tipo = body.tipo || 'acuerdos'; // acuerdos, compromisos, oportunidades
+
+      let datos: any[] = [];
+      let nombreArchivo = '';
+
+      if (tipo === 'acuerdos') {
+        const resultado = await pool.query(
+          `SELECT id, nombre, marca_id, estado FROM acuerdos WHERE compania_id = $1 ORDER BY nombre`,
+          [companiaId]
+        );
+        datos = resultado.rows;
+        nombreArchivo = 'Acuerdos.xlsx';
+      } else if (tipo === 'compromisos') {
+        const resultado = await pool.query(
+          `SELECT id, acuerdo_id, entregable, estado, progreso FROM compromisos WHERE compania_id = $1 ORDER BY entregable`,
+          [companiaId]
+        );
+        datos = resultado.rows;
+        nombreArchivo = 'Compromisos.xlsx';
+      } else if (tipo === 'oportunidades') {
+        const resultado = await pool.query(
+          `SELECT id, marca_id, etapa FROM oportunidades WHERE compania_id = $1 ORDER BY etapa`,
+          [companiaId]
+        );
+        datos = resultado.rows;
+        nombreArchivo = 'Oportunidades.xlsx';
+      }
+
+      // Crear workbook
+      const ws = XLSX.utils.json_to_sheet(datos);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Datos');
+
+      // Generar buffer
+      const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' });
+
+      // Convertir a base64
+      const base64 = buffer.toString('base64');
+
+      sendJson(response, 200, {
+        archivo: base64,
+        nombre: nombreArchivo,
+        tipo: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      return;
+    } catch (error) {
+      console.error('Error generating report:', error);
+      sendJson(response, 500, { error: 'Error al generar el reporte.' });
       return;
     }
   }

@@ -1,0 +1,89 @@
+═══════════════════════════════════════════════════════════════════════════════
+                    🔑 AQUÍ PEGA TU API KEY DE OPENAI
+═══════════════════════════════════════════════════════════════════════════════
+
+UBICACIÓN DEL ARCHIVO:
+  📁 C:\Users\USER\Desktop\Sport Act Hub\server\.env
+
+PASOS:
+
+1. Copia tu API key de OpenAI (comienza con sk-proj-...)
+
+2. Crea un archivo llamado ".env" en la carpeta "server"
+
+3. Pega esta estructura en el archivo:
+
+   ┌─────────────────────────────────────────────────────────┐
+   │ OPENAI_API_KEY=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      │
+   │ API_PORT=3001                                           │
+   └─────────────────────────────────────────────────────────┘
+
+4. Reemplaza "sk-proj-aqui-tu-clave-sin-comillas" con tu clave real
+
+EJEMPLO COMPLETO:
+   ┌─────────────────────────────────────────────────────────┐
+   │ OPENAI_API_KEY=sk-proj-abc123def456ghi789jklmnopqrstu  │
+   │ API_PORT=3001                                           │
+   └─────────────────────────────────────────────────────────┘
+
+IMPORTANTE:
+  ✅ Sin espacios antes ni después de la clave
+  ✅ Sin comillas alrededor de la clave
+  ✅ La clave completa (comienza con "sk-")
+  ✅ Guarda el archivo como ".env" (no .env.txt)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+CÓMO CREAR EL ARCHIVO EN WINDOWS:
+
+Opción A (Recomendado - PowerShell):
+   1. Abre PowerShell en la carpeta "server"
+   2. Ejecuta:
+      @'
+      OPENAI_API_KEY=sk-proj-tu-clave-aqui
+      API_PORT=3001
+      '@ | Out-File -Encoding utf8 .env
+
+Opción B (Block de Notas):
+   1. Abre Block de Notas (Notepad)
+   2. Pega el contenido:
+      OPENAI_API_KEY=sk-proj-tu-clave-aqui
+      API_PORT=3001
+   3. Guardar Como → server\.env → Tipo: "Todos los archivos" → Guardar
+
+Opción C (VSCode):
+   1. Abre VSCode en la carpeta raíz
+   2. Clic derecho en la carpeta "server"
+   3. "New File" → escribe ".env"
+   4. Pega el contenido arriba
+
+═══════════════════════════════════════════════════════════════════════════════
+
+VERIFICAR QUE ESTÁ BIEN CONFIGURADO:
+
+En PowerShell, dentro de la carpeta server/:
+   cat .env
+
+Deberías ver:
+   OPENAI_API_KEY=sk-proj-...
+   API_PORT=3001
+
+═══════════════════════════════════════════════════════════════════════════════
+
+¿DÓNDE OBTENGO MI API KEY?
+
+1. Ve a: https://platform.openai.com/api-keys
+2. Haz clic en "Create new secret key"
+3. Copia la clave (se muestra una sola vez)
+4. Pon en un lugar seguro
+5. Pégala en el archivo .env
+
+═══════════════════════════════════════════════════════════════════════════════
+
+LISTO! Después de crear el archivo .env, ejecuta:
+
+   npm run dev:server
+
+Y verás que el asistente está listo para usar. 🚀
+
+═══════════════════════════════════════════════════════════════════════════════

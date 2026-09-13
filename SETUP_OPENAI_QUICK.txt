@@ -1,0 +1,44 @@
+═══════════════════════════════════════════════════════════════════════════════
+  ASISTENTE IA - CONFIGURACIÓN RÁPIDA
+═══════════════════════════════════════════════════════════════════════════════
+
+1️⃣  OBTÉN TU API KEY DE OPENAI
+    ├─ Ve a: https://platform.openai.com/api-keys
+    ├─ Haz clic en "Create new secret key"
+    ├─ Copia la clave (comienza con: sk-proj-...)
+    └─ ⚠️ Guárdala en un lugar seguro
+
+2️⃣  CREA EL ARCHIVO .env EN EL SERVIDOR
+    ├─ Ubicación: C:\Users\USER\Desktop\Sport Act Hub\server\.env
+    ├─ Contenido:
+    │
+    │   OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxxxxxxx
+    │   API_PORT=3001
+    │
+    └─ Reemplaza "xxxxxxxxxxxxxxxxxxxxx" con tu API key real
+
+3️⃣  INICIA LOS SERVIDORES
+    ├─ Terminal 1: npm run dev:server
+    ├─ Terminal 2: npm run dev
+    └─ Abre: http://localhost:5173
+
+4️⃣  USA EL ASISTENTE
+    ├─ Busca el botón azul 💬 en la esquina inferior derecha
+    ├─ Haz una pregunta sobre tus datos
+    └─ ¡El asistente te responderá!
+
+═══════════════════════════════════════════════════════════════════════════════
+
+EJEMPLOS DE PREGUNTAS:
+  • "¿Cuántos acuerdos tenemos vigentes?"
+  • "¿Cuál es el valor total del pipeline?"
+  • "¿Qué compromisos están pendientes?"
+  • "¿Cuáles son nuestras marcas principales?"
+  • "¿Cuál es el progreso de cumplimiento?"
+
+═══════════════════════════════════════════════════════════════════════════════
+
+ARCHIVO IMPORTANTE:
+  📄 Lee: ASISTENTE_IA_SETUP.md (instrucciones completas)
+
+═══════════════════════════════════════════════════════════════════════════════

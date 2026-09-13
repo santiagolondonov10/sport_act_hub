@@ -1,0 +1,151 @@
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                                                                           ║
+║                     ASISTENTE DE IA - COMIENZA AQUÍ                      ║
+║                                                                           ║
+║              Tu asistente flotante está listo para usar.                 ║
+║            Solo falta pegar tu API Key de OpenAI.                        ║
+║                                                                           ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ 1️⃣  OBTÉN TU API KEY (SI NO LA TIENES)                                    │
+└───────────────────────────────────────────────────────────────────────────┘
+
+  • Ve a: https://platform.openai.com/api-keys
+  • Crea una clave nueva
+  • Cópiala (comienza con: sk-proj-...)
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ 2️⃣  CREA EL ARCHIVO .env EN EL SERVIDOR                                   │
+└───────────────────────────────────────────────────────────────────────────┘
+
+  Ubicación: C:\Users\USER\Desktop\Sport Act Hub\server\.env
+
+  Contenido:
+  ┌─────────────────────────────────────┐
+  │ OPENAI_API_KEY=sk-proj-tu-clave    │
+  │ API_PORT=3001                       │
+  └─────────────────────────────────────┘
+
+  ⚠️  Reemplaza "sk-proj-tu-clave" con tu clave real
+
+  📋 Más detalles: Lee el archivo "🔑_AQUI_PEGA_TU_OPENAI_KEY.txt"
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ 3️⃣  ABRE DOS TERMINALES Y EJECUTA                                         │
+└───────────────────────────────────────────────────────────────────────────┘
+
+  Terminal 1:
+  ┌─────────────────────────────────────┐
+  │ npm run dev:server                  │
+  └─────────────────────────────────────┘
+
+  Deberías ver:
+  ✓ Sports Act Hub API listening on http://localhost:3001
+
+  Terminal 2:
+  ┌─────────────────────────────────────┐
+  │ npm run dev                         │
+  └─────────────────────────────────────┘
+
+  Deberías ver:
+  ✓ VITE v... ready in ... ms
+  ✓ http://localhost:5173
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ 4️⃣  USA EL ASISTENTE                                                      │
+└───────────────────────────────────────────────────────────────────────────┘
+
+  • Abre: http://localhost:5173
+  • Inicia sesión
+  • Busca el botón azul 💬 en esquina inferior derecha
+  • ¡Haz una pregunta!
+
+  Ejemplos:
+  • "¿Cuántos acuerdos tenemos?"
+  • "¿Cuál es el valor del pipeline?"
+  • "¿Qué compromisos están pendientes?"
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ 📚 DOCUMENTACIÓN                                                          │
+└───────────────────────────────────────────────────────────────────────────┘
+
+  Según lo que necesites:
+
+  ⚡ Inicio rápido (5 min):
+     → SETUP_OPENAI_QUICK.txt
+
+  📖 Guía completa (15 min):
+     → INSTRUCCIONES_ASISTENTE_IA.md
+
+  🔍 Cómo crear .env (10 min):
+     → ARCHIVO_ENV_SERVIDOR.md
+
+  🏗️  Entender la arquitectura (20 min):
+     → ARQUITECTURA_ASISTENTE.md
+
+  ✅ Validar que todo funciona:
+     → CHECKLIST_CONFIGURACION.md
+
+  📚 Índice de todos los archivos:
+     → INDICE_DOCUMENTACION.md
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ ❓ PROBLEMAS?                                                             │
+└───────────────────────────────────────────────────────────────────────────┘
+
+  "No se cómo crear el .env"
+  → Lee: ARCHIVO_ENV_SERVIDOR.md
+
+  "Me sale error 'OpenAI no disponible'"
+  → Verifica: server/.env con tu clave
+  → Reinicia: npm run dev:server
+
+  "El chat no responde"
+  → Espera 2-5 segundos
+  → Verifica que el servidor backend está corriendo
+  → Mira la consola para errores
+
+  "No veo el botón flotante"
+  → Recarga la página (Ctrl+R)
+  → Inicia sesión en la app
+  → Limpia el caché (Ctrl+Shift+Supr)
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ ✨ CARACTERÍSTICAS                                                         │
+└───────────────────────────────────────────────────────────────────────────┘
+
+  ✅ Acceso a todos los datos de la BD
+  ✅ Respuestas en lenguaje natural
+  ✅ Interfaz flotante moderna
+  ✅ Chat en tiempo real
+  ✅ Seguridad: API Key protegida
+  ✅ Autenticación integrada
+  ✅ Filtrado por compañía
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ 🎯 PRÓXIMO PASO                                                           │
+└───────────────────────────────────────────────────────────────────────────┘
+
+  1. Crea tu archivo: server\.env
+  2. Pega tu API Key
+  3. Guarda el archivo
+  4. Ejecuta: npm run dev:server
+  5. Ejecuta: npm run dev
+  6. ¡Usa el asistente! 🚀
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📞 CONTACTO Y SOPORTE:
+
+  OpenAI Status:        https://status.openai.com
+  OpenAI Documentación: https://platform.openai.com/docs
+  API Keys:             https://platform.openai.com/api-keys
+
+═══════════════════════════════════════════════════════════════════════════════
+
+¿LISTO?
+
+→ Ve al archivo: 🔑_AQUI_PEGA_TU_OPENAI_KEY.txt
+
+═══════════════════════════════════════════════════════════════════════════════
