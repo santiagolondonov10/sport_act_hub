@@ -35,6 +35,9 @@ export interface Oportunidad {
   id: string;
   marcaId: string;
   responsableId: string;
+  responsableInternoNombre?: string;
+  responsableInternoCorreo?: string;
+  responsableInternoTelefono?: string;
   etapa: EtapaOportunidad;
   valorEstimadoCOP: number;
   probabilidad: number;

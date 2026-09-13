@@ -52,9 +52,9 @@ export function OportunidadFormModal({ abierto, onCerrar, onGuardar, oportunidad
   const [fechaEstimadaCierre, setFechaEstimadaCierre] = useState(formatDateForInput(oportunidadInicial?.fechaEstimadaCierre));
   const [proximoPaso, setProximoPaso] = useState(oportunidadInicial?.proximoPaso ?? '');
   const [probabilidad] = useState(oportunidadInicial?.probabilidad ?? 50);
-  // const [responsableInternoNombre, setResponsableInternoNombre] = useState(oportunidadInicial?.responsableInternoNombre ?? '');
-  // const [responsableInternoCorreo, setResponsableInternoCorreo] = useState(oportunidadInicial?.responsableInternoCorreo ?? '');
-  // const [responsableInternoTelefono, setResponsableInternoTelefono] = useState(oportunidadInicial?.responsableInternoTelefono ?? '');
+  const [responsableInternoNombre, setResponsableInternoNombre] = useState(oportunidadInicial?.responsableInternoNombre ?? '');
+  const [responsableInternoCorreo, setResponsableInternoCorreo] = useState(oportunidadInicial?.responsableInternoCorreo ?? '');
+  const [responsableInternoTelefono, setResponsableInternoTelefono] = useState(oportunidadInicial?.responsableInternoTelefono ?? '');
   const [activosSeleccionados, setActivosSeleccionados] = useState<string[]>(
     oportunidadInicial?.activosPropuestosIds ?? [],
   );
@@ -180,6 +180,18 @@ export function OportunidadFormModal({ abierto, onCerrar, onGuardar, oportunidad
       alert('Por favor describe el próximo paso');
       return;
     }
+    if (!responsableInternoNombre || !responsableInternoNombre.trim()) {
+      alert('Por favor ingresa el nombre del responsable interno');
+      return;
+    }
+    if (!responsableInternoCorreo || !responsableInternoCorreo.trim()) {
+      alert('Por favor ingresa el correo del responsable interno');
+      return;
+    }
+    if (!responsableInternoTelefono || !responsableInternoTelefono.trim()) {
+      alert('Por favor ingresa el teléfono del responsable interno');
+      return;
+    }
 
     onGuardar({
       marcaId,
@@ -190,6 +202,9 @@ export function OportunidadFormModal({ abierto, onCerrar, onGuardar, oportunidad
       activosPropuestosIds: activosSeleccionados,
       proximoPaso,
       probabilidad,
+      responsableInternoNombre,
+      responsableInternoCorreo,
+      responsableInternoTelefono,
     });
     onCerrar();
   }
@@ -284,7 +299,7 @@ export function OportunidadFormModal({ abierto, onCerrar, onGuardar, oportunidad
           rows={2}
           required
         />
-        {/* <div className="border-t border-gray-100 pt-4">
+        <div className="border-t border-gray-100 pt-4">
           <h4 className="mb-3 text-sm font-semibold text-gray-900">Responsable Interno</h4>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <TextField
@@ -307,7 +322,7 @@ export function OportunidadFormModal({ abierto, onCerrar, onGuardar, oportunidad
               required
             />
           </div>
-        </div> */}
+        </div>
         <div className="flex justify-end gap-2 border-t border-gray-100 pt-4">
           <Button type="button" variante="secundario" onClick={onCerrar}>
             Cancelar

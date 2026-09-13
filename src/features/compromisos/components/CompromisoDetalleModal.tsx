@@ -9,6 +9,7 @@ import { formatFechaLarga, formatNumero, diasHasta } from '@/lib/format';
 import { canalesAudiencia, campanasAudiencia, segmentosAudiencia } from '@/data';
 import { useAcuerdos } from '@/features/acuerdos/store';
 import { useMarcas } from '@/features/marcas/store';
+import { useEvidencias } from '@/features/evidencias/store';
 
 interface CompromisoDetalleModalProps {
   compromiso: Compromiso | null;
@@ -23,6 +24,7 @@ export function CompromisoDetalleModal({ compromiso, onCerrar, onCambiarEstado, 
 
   const { acuerdos } = useAcuerdos();
   const { marcas } = useMarcas();
+  const { evidencias } = useEvidencias();
 
   const acuerdo = acuerdos.find((a) => a.id === compromiso.acuerdoId);
   const marca = compromiso.marcaId ? marcas.find((m) => m.id === compromiso.marcaId) : undefined;
@@ -31,6 +33,10 @@ export function CompromisoDetalleModal({ compromiso, onCerrar, onCambiarEstado, 
   const canalAudiencia = canalesAudiencia.find((c) => c.id === compromiso.canalAudienciaId);
   const campana = campanasAudiencia.find((c) => c.id === compromiso.campanaAudienciaId);
   const tieneVinculoAudiencia = Boolean(segmento || canalAudiencia || campana || compromiso.indicadorComprometido);
+
+  const evidenciasRegistradas = evidencias.filter(
+    (e) => e.compromisoId === compromiso.id && (e.estado === 'En revisión' || e.estado === 'Aprobada')
+  ).length;
 
   return (
     <Modal abierto={Boolean(compromiso)} onCerrar={onCerrar} titulo={compromiso.entregable} descripcion={acuerdo?.nombre}>
@@ -86,9 +92,9 @@ export function CompromisoDetalleModal({ compromiso, onCerrar, onCambiarEstado, 
 
         <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-sm">
           <span className="text-gray-600">
-            0 de {compromiso.evidenciasRequeridas} evidencia(s) requerida(s) registrada(s)
+            {evidenciasRegistradas} de {compromiso.evidenciasRequeridas} evidencia(s) requerida(s) registrada(s)
           </span>
-          <Link to="/evidencias" className="font-medium text-brand-800 hover:underline">
+          <Link to={`/evidencias?compromiso=${compromiso.id}`} className="font-medium text-brand-800 hover:underline">
             Ver evidencias
           </Link>
         </div>

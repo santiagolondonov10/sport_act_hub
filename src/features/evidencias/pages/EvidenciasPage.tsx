@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { CheckCircle2, Clock, FolderCheck, Plus, XCircle } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { StatCard } from '@/components/shared/StatCard';
@@ -12,6 +13,7 @@ import type { Evidencia, EstadoEvidencia } from '@/types';
 import { useEvidencias } from '../store';
 import { useAcuerdos } from '@/features/acuerdos/store';
 import { useMarcas } from '@/features/marcas/store';
+import { useCompromisos } from '@/features/compromisos/store';
 import { useToast } from '@/hooks/useToast';
 import { EvidenciaCard } from '../components/EvidenciaCard';
 import { EvidenciaFormModal } from '../components/EvidenciaFormModal';
@@ -24,10 +26,13 @@ export function EvidenciasPage() {
   const { evidencias, crearEvidencia, actualizarEvidencia, cambiarEstado } = useEvidencias();
   const { acuerdos } = useAcuerdos();
   const { marcas } = useMarcas();
+  const { compromisos } = useCompromisos();
   const { mostrarToast } = useToast();
+  const [searchParams] = useSearchParams();
 
   const [busqueda, setBusqueda] = useState('');
   const [acuerdoId, setAcuerdoId] = useState('todos');
+  const [compromiso, setCompromiso] = useState(() => searchParams.get('compromiso') || 'todos');
   const [tipo, setTipo] = useState('todos');
   const [estado, setEstado] = useState('todos');
   const [modalCrearAbierto, setModalCrearAbierto] = useState(false);
@@ -40,11 +45,12 @@ export function EvidenciasPage() {
         e.titulo.toLowerCase().includes(busqueda.toLowerCase()) ||
         e.descripcion.toLowerCase().includes(busqueda.toLowerCase());
       const coincideAcuerdo = acuerdoId === 'todos' || e.acuerdoId === acuerdoId;
+      const coincideCompromiso = compromiso === 'todos' || e.compromisoId === compromiso;
       const coincideTipo = tipo === 'todos' || e.tipo === tipo;
       const coincideEstado = estado === 'todos' || e.estado === estado;
-      return coincideBusqueda && coincideAcuerdo && coincideTipo && coincideEstado;
+      return coincideBusqueda && coincideAcuerdo && coincideCompromiso && coincideTipo && coincideEstado;
     });
-  }, [evidencias, busqueda, acuerdoId, tipo, estado]);
+  }, [evidencias, busqueda, acuerdoId, compromiso, tipo, estado]);
 
   const aprobadas = evidencias.filter((e) => e.estado === 'Aprobada').length;
   const enRevision = evidencias.filter((e) => e.estado === 'En revisión').length;
@@ -110,6 +116,14 @@ export function EvidenciasPage() {
           options={[
             { value: 'todos', label: t('filter.todosLosAcuerdos') },
             ...acuerdos.map((a) => ({ value: a.id, label: `${a.nombre} — ${marcas.find((m) => m.id === a.marcaId)?.nombre ?? ''}` })),
+          ]}
+        />
+        <FilterSelect
+          value={compromiso}
+          onChange={(e) => setCompromiso(e.target.value)}
+          options={[
+            { value: 'todos', label: 'Todos los compromisos' },
+            ...compromisos.map((c) => ({ value: c.id, label: c.entregable })),
           ]}
         />
         <FilterSelect

@@ -646,9 +646,9 @@ export function OportunidadDetallePage() {
           <Card>
             <CardHeader title="Responsable interno" />
             <CardContent className="space-y-3">
-              {/* <div className="flex items-start gap-3">
+              <div className="flex items-start gap-3">
                 <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white bg-amber-500">
-                  {iniciales(oportunidad.responsableInternoNombre || 'RI')}
+                  {(oportunidad.responsableInternoNombre || 'RI').substring(0, 2).toUpperCase()}
                 </span>
                 <div className="min-w-0">
                   <p className="text-base font-semibold text-gray-900">{oportunidad.responsableInternoNombre || 'No especificado'}</p>
@@ -663,8 +663,7 @@ export function OportunidadDetallePage() {
                   <span className="text-gray-500">Teléfono</span>
                   <span className="text-gray-700">{oportunidad.responsableInternoTelefono || '-'}</span>
                 </div>
-              </div> */}
-              <p className="text-gray-500 text-sm">Información del responsable interno no disponible</p>
+              </div>
             </CardContent>
           </Card>
 

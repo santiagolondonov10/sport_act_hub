@@ -1738,7 +1738,11 @@ const server = createServer(async (request, response) => {
         return;
       }
       const result = await pool.query(
-        `SELECT id, marca_id AS "marcaId", responsable_id AS "responsableId", etapa,
+        `SELECT id, marca_id AS "marcaId", responsable_id AS "responsableId",
+                responsable_interno_nombre AS "responsableInternoNombre",
+                responsable_interno_correo AS "responsableInternoCorreo",
+                responsable_interno_telefono AS "responsableInternoTelefono",
+                etapa,
                 valor_estimado_cop AS "valorEstimadoCOP", fecha_estimada_cierre AS "fechaEstimadaCierre",
                 activos_propuestos_ids AS "activosPropuestosIds", proximo_paso AS "proximoPaso",
                 contratos_adjuntos AS "contratosAdjuntos", documentos_adjuntos AS "documentosAdjuntos",
@@ -2313,11 +2317,19 @@ const server = createServer(async (request, response) => {
       }
 
       const compromisoId = `compromiso-${Date.now()}`;
+
+      // Get marca_id from the associated acuerdo
+      const acuerdoResult = await pool.query(
+        `SELECT marca_id FROM acuerdos WHERE id = $1`,
+        [body.acuerdoId]
+      );
+      const marcaIdFromAcuerdo = acuerdoResult.rows[0]?.marca_id || body.marcaId;
+
       const result = await pool.query(
         `INSERT INTO compromisos (id, acuerdo_id, marca_id, entregable, categoria, responsable_id, fecha_limite, prioridad, estado, progreso, evidencias_requeridas, observaciones, compania_id)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
          RETURNING id, acuerdo_id AS "acuerdoId", marca_id AS "marcaId", entregable, categoria, responsable_id AS "responsableId", fecha_limite AS "fechaLimite", prioridad, estado, progreso, evidencias_requeridas AS "evidenciasRequeridas", observaciones`,
-        [compromisoId, body.acuerdoId, body.marcaId, body.entregable, body.categoria, body.responsableId, body.fechaLimite, body.prioridad, body.estado, body.progreso, body.evidenciasRequeridas, body.observaciones, companiaId]
+        [compromisoId, body.acuerdoId, marcaIdFromAcuerdo, body.entregable, body.categoria, body.responsableId, body.fechaLimite, body.prioridad, body.estado, body.progreso, body.evidenciasRequeridas, body.observaciones, companiaId]
       );
 
       sendJson(response, 201, result.rows[0]);
@@ -2417,9 +2429,20 @@ const server = createServer(async (request, response) => {
         updateFields.push(`observaciones = $${paramIndex++}`);
         updateValues.splice(-1, 0, body.observaciones);
       }
-      if (body.marcaId !== undefined && body.marcaId) {
-        updateFields.push(`marca_id = $${paramIndex++}`);
-        updateValues.splice(-1, 0, body.marcaId);
+
+      // If acuerdoId is being updated, fetch the new marca_id from that acuerdo
+      if (body.acuerdoId !== undefined) {
+        const acuerdoResult = await pool.query(
+          `SELECT marca_id FROM acuerdos WHERE id = $1`,
+          [body.acuerdoId]
+        );
+        if (acuerdoResult.rows[0]) {
+          const newMarcaId = acuerdoResult.rows[0].marca_id;
+          updateFields.push(`acuerdo_id = $${paramIndex++}`);
+          updateValues.splice(-1, 0, body.acuerdoId);
+          updateFields.push(`marca_id = $${paramIndex++}`);
+          updateValues.splice(-1, 0, newMarcaId);
+        }
       }
 
       if (updateFields.length === 0) {
