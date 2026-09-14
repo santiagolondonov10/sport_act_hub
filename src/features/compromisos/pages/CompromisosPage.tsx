@@ -14,6 +14,7 @@ import { formatFecha, diasHasta } from '@/lib/format';
 import { responsables } from '@/data';
 import { useCompromisos } from '../store';
 import { useMarcas } from '@/features/marcas/store';
+import { useActivos } from '@/features/activos/store';
 import { useToast } from '@/hooks/useToast';
 import { CompromisoDetalleModal } from '../components/CompromisoDetalleModal';
 import { CompromisoFormModal } from '../components/CompromisoFormModal';
@@ -24,12 +25,14 @@ export function CompromisosPage() {
   const { t } = useLanguage();
   const { compromisos, cambiarEstado, actualizarCompromiso, eliminarCompromiso } = useCompromisos();
   const { marcas } = useMarcas();
+  const { activos } = useActivos();
   const { mostrarToast } = useToast();
 
   const [busqueda, setBusqueda] = useState('');
   const [estado, setEstado] = useState('todos');
   const [prioridad, setPrioridad] = useState('todas');
   const [responsableId, setResponsableId] = useState('todos');
+  const [activoId, setActivoId] = useState('todos');
   const [seleccionado, setSeleccionado] = useState<Compromiso | null>(null);
   const [modalEditarAbierto, setModalEditarAbierto] = useState(false);
   const [compromisoEditando, setCompromisoEditando] = useState<Compromiso | null>(null);
@@ -40,9 +43,10 @@ export function CompromisosPage() {
       const coincideEstado = estado === 'todos' || c.estado === estado;
       const coincidePrioridad = prioridad === 'todas' || c.prioridad === prioridad;
       const coincideResponsable = responsableId === 'todos' || c.responsableId === responsableId;
-      return coincideBusqueda && coincideEstado && coincidePrioridad && coincideResponsable;
+      const coincideActivo = activoId === 'todos' || (c.activoRelacionadoId && c.activoRelacionadoId === activoId);
+      return coincideBusqueda && coincideEstado && coincidePrioridad && coincideResponsable && coincideActivo;
     });
-  }, [compromisos, busqueda, estado, prioridad, responsableId]);
+  }, [compromisos, busqueda, estado, prioridad, responsableId, activoId]);
 
   const pendientes = compromisos.filter((c) => c.estado === 'Pendiente' || c.estado === 'En curso').length;
   const vencidos = compromisos.filter((c) => c.estado === 'Vencido').length;
@@ -89,6 +93,11 @@ export function CompromisosPage() {
           value={responsableId}
           onChange={(e) => setResponsableId(e.target.value)}
           options={[{ value: 'todos', label: t('filter.todosLosResponsables') }, ...responsables.map((r) => ({ value: r.id, label: r.nombre }))]}
+        />
+        <FilterSelect
+          value={activoId}
+          onChange={(e) => setActivoId(e.target.value)}
+          options={[{ value: 'todos', label: 'Todos los activos' }, ...activos.map((a) => ({ value: a.id, label: a.nombre }))]}
         />
       </div>
 

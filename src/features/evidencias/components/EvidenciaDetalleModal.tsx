@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, Download, Edit2, X } from 'lucide-react';
+import { Download, Edit2, X } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -8,18 +8,17 @@ import { formatFechaLarga } from '@/lib/format';
 import { useAcuerdos } from '@/features/acuerdos/store';
 import { useMarcas } from '@/features/marcas/store';
 import { useCompromisos } from '@/features/compromisos/store';
-import type { Evidencia, EstadoEvidencia } from '@/types';
+import type { Evidencia } from '@/types';
 
 interface EvidenciaDetalleModalProps {
   evidencia: Evidencia | null;
   onCerrar: () => void;
-  onCambiarEstado: (id: string, estado: EstadoEvidencia) => void;
   onEditar?: (evidencia: Evidencia) => void;
 }
 
 const TIPOS_IMAGEN = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
-export function EvidenciaDetalleModal({ evidencia, onCerrar, onCambiarEstado, onEditar }: EvidenciaDetalleModalProps) {
+export function EvidenciaDetalleModal({ evidencia, onCerrar, onEditar }: EvidenciaDetalleModalProps) {
   const [imagenAmpliada, setImagenAmpliada] = useState<{ nombre: string; tipo: string; datos: string } | null>(null);
 
   if (!evidencia) return null;
@@ -140,26 +139,6 @@ export function EvidenciaDetalleModal({ evidencia, onCerrar, onCambiarEstado, on
           </div>
         )}
 
-        {evidencia.estado === 'En revisión' && (
-          <div className="flex gap-2 border-t border-gray-100 pt-4">
-            <Button
-              variante="primario"
-              icono={<Check size={15} />}
-              onClick={() => onCambiarEstado(evidencia.id, 'Aprobada')}
-              className="flex-1"
-            >
-              Aprobar
-            </Button>
-            <Button
-              variante="peligro"
-              icono={<X size={15} />}
-              onClick={() => onCambiarEstado(evidencia.id, 'Rechazada')}
-              className="flex-1"
-            >
-              Rechazar
-            </Button>
-          </div>
-        )}
       </div>
     </Modal>
 
