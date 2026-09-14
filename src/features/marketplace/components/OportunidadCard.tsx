@@ -1,5 +1,6 @@
 import { TrendingUp, MapPin, Users } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { formatCurrency } from '@/lib/formatters';
 import type { OportunidadInversion } from '../data';
 
 interface OportunidadCardProps {
@@ -49,7 +50,7 @@ export function OportunidadCard({ oportunidad, onVerDetalle }: OportunidadCardPr
             />
           </div>
           <p className="text-xs text-gray-500">
-            $ {(oportunidad.montoRecaudado / 1000000).toFixed(0)}M de $ {(oportunidad.montoTotal / 1000000).toFixed(0)}M
+            {formatCurrency(oportunidad.montoRecaudado / 1000000)}M de {formatCurrency(oportunidad.montoTotal / 1000000)}M
           </p>
         </div>
 

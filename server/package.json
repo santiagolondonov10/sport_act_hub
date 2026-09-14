@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "dotenv": "^17.4.2",
+    "nodemailer": "^10.0.10",
     "xlsx": "^0.18.5"
   }
 }

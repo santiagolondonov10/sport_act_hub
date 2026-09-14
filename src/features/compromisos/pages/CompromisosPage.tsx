@@ -11,6 +11,7 @@ import { useLanguage } from '@/lib/LanguageContext';
 import { ESTADOS_COMPROMISO } from '@/types';
 import type { Compromiso, EstadoCompromiso, Prioridad } from '@/types';
 import { formatFecha, diasHasta } from '@/lib/format';
+import { formatNumber } from '@/lib/formatters';
 import { responsables } from '@/data';
 import { useCompromisos } from '../store';
 import { useMarcas } from '@/features/marcas/store';
@@ -66,10 +67,10 @@ export function CompromisosPage() {
       />
 
       <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard etiqueta={t('dashboard.totalCompromisos')} valor={String(compromisos.length)} icono={ClipboardList} tono="marca" />
-        <StatCard etiqueta={t('dashboard.pendientesEnCurso')} valor={String(pendientes)} icono={AlarmClock} tono="advertencia" />
-        <StatCard etiqueta={t('dashboard.vencidos')} valor={String(vencidos)} icono={TriangleAlert} tono={vencidos > 0 ? 'peligro' : 'neutro'} />
-        <StatCard etiqueta={t('dashboard.cumplidos')} valor={String(cumplidos)} icono={CheckCircle2} tono="exito" />
+        <StatCard etiqueta={t('dashboard.totalCompromisos')} valor={formatNumber(compromisos.length)} icono={ClipboardList} tono="marca" />
+        <StatCard etiqueta={t('dashboard.pendientesEnCurso')} valor={formatNumber(pendientes)} icono={AlarmClock} tono="advertencia" />
+        <StatCard etiqueta={t('dashboard.vencidos')} valor={formatNumber(vencidos)} icono={TriangleAlert} tono={vencidos > 0 ? 'peligro' : 'neutro'} />
+        <StatCard etiqueta={t('dashboard.cumplidos')} valor={formatNumber(cumplidos)} icono={CheckCircle2} tono="exito" />
       </div>
 
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">

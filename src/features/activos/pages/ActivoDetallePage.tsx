@@ -6,7 +6,8 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { formatCOP, formatFecha, formatNumero } from '@/lib/format';
+import { formatFecha } from '@/lib/format';
+import { formatCurrency, formatNumber } from '@/lib/formatters';
 import { authHeaders } from '@/lib/auth';
 import { acuerdos, marcas, segmentosAudiencia } from '@/data';
 import { getInsigniasAudiencia } from '@/lib/activoAudiencia';
@@ -184,7 +185,7 @@ export function ActivoDetallePage() {
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Alcance estimado</p>
-                    <p className="text-sm font-medium text-gray-900">{formatNumero(activo.audiencia.alcanceEstimado)}</p>
+                    <p className="text-sm font-medium text-gray-900">{formatNumber(activo.audiencia.alcanceEstimado)}</p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Capacidad de segmentación</p>
@@ -370,7 +371,7 @@ export function ActivoDetallePage() {
           <Card>
             <CardHeader title="Valoración comercial" />
             <CardContent>
-              <p className="text-2xl font-semibold text-gray-900">{formatCOP(activo.valoracionCOP)}</p>
+              <p className="text-2xl font-semibold text-gray-900">{formatCurrency(activo.valoracionCOP)}</p>
               <p className="mt-1 text-xs text-gray-500">Valor de referencia para negociación</p>
             </CardContent>
           </Card>

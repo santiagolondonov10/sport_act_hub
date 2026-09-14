@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ProgressBar } from '@/components/ui/ProgressBar';
-import { formatCOP, formatFecha } from '@/lib/format';
+import { formatFecha } from '@/lib/format';
+import { formatCurrency } from '@/lib/formatters';
 import { getResponsable, getReportePorAcuerdo } from '@/data';
 import { getCumplimientoPorAcuerdo, getTiempoConsumidoPorAcuerdo } from '@/lib/selectors';
 import { useToast } from '@/hooks/useToast';
@@ -118,7 +119,7 @@ export function AcuerdoDetallePage() {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
                 <div>
                   <p className="text-xs text-gray-500">Valor del acuerdo</p>
-                  <p className="text-lg font-semibold text-gray-900">{formatCOP(acuerdo.valorCOP)}</p>
+                  <p className="text-lg font-semibold text-gray-900">{formatCurrency(acuerdo.valorCOP)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Vigencia</p>

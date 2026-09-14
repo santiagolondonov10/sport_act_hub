@@ -613,31 +613,48 @@ export function OportunidadDetallePage() {
                 <p className="text-sm text-gray-500">{sectorNombre}</p>
               </div>
 
-              {marca && (
+              {marca && oportunidad && (
                 <div className="space-y-3 border-t border-gray-100 pt-4">
-                  {marca.personaContacto1 && (
-                    <div className="flex items-start gap-2.5">
-                      <User size={16} className="text-gray-400 mt-0.5 flex-shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-900">{marca.personaContacto1}</p>
-                        {marca.cargoContacto1 && (
-                          <p className="text-xs text-gray-500">{marca.cargoContacto1}</p>
+                  {(() => {
+                    // Extract contact number from responsable_id (format: "uuid-contacto1", "uuid-contacto2", etc.)
+                    const contactMatch = oportunidad.responsableId?.match(/contacto(\d)/);
+                    const numeroContacto = contactMatch ? parseInt(contactMatch[1]) : 1;
+
+                    const marcaWithContacts = marca as Record<string, any>;
+                    const persona = marcaWithContacts[`personaContacto${numeroContacto}`];
+                    const correo = marcaWithContacts[`correoContacto${numeroContacto}`];
+                    const telefono = marcaWithContacts[`telefonoContacto${numeroContacto}`];
+                    const cargo = marcaWithContacts[`cargoContacto${numeroContacto}`];
+
+                    return (
+                      <>
+                        <p className="text-xs font-medium text-gray-500">Contacto {numeroContacto}</p>
+                        {persona && (
+                          <div className="flex items-start gap-2.5">
+                            <User size={16} className="text-gray-400 mt-0.5 flex-shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-gray-900">{persona}</p>
+                              {cargo && (
+                                <p className="text-xs text-gray-500">{cargo}</p>
+                              )}
+                            </div>
+                          </div>
                         )}
-                      </div>
-                    </div>
-                  )}
-                  {marca.correoContacto1 && (
-                    <div className="flex items-center gap-2.5">
-                      <Mail size={16} className="text-gray-400 flex-shrink-0" />
-                      <p className="text-sm text-gray-700 break-all">{marca.correoContacto1}</p>
-                    </div>
-                  )}
-                  {marca.telefonoContacto1 && (
-                    <div className="flex items-center gap-2.5">
-                      <Phone size={16} className="text-gray-400 flex-shrink-0" />
-                      <p className="text-sm text-gray-700">{marca.telefonoContacto1}</p>
-                    </div>
-                  )}
+                        {correo && (
+                          <div className="flex items-center gap-2.5">
+                            <Mail size={16} className="text-gray-400 flex-shrink-0" />
+                            <p className="text-sm text-gray-700 break-all">{correo}</p>
+                          </div>
+                        )}
+                        {telefono && (
+                          <div className="flex items-center gap-2.5">
+                            <Phone size={16} className="text-gray-400 flex-shrink-0" />
+                            <p className="text-sm text-gray-700">{telefono}</p>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               )}
             </CardContent>

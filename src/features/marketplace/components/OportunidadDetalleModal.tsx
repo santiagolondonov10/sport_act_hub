@@ -1,5 +1,6 @@
 import { X, MapPin, TrendingUp, Users, Clock, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { formatCurrency } from '@/lib/formatters';
 import type { OportunidadInversion } from '../data';
 
 interface OportunidadDetalleModalProps {
@@ -111,16 +112,16 @@ export function OportunidadDetalleModal({ abierto, oportunidad, onCerrar }: Opor
             <div className="mt-3 grid grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-gray-600">Recaudado</p>
-                <p className="font-semibold text-gray-900">$ {(oportunidad.montoRecaudado / 1000000).toFixed(1)}M</p>
+                <p className="font-semibold text-gray-900">{formatCurrency(oportunidad.montoRecaudado / 1000000)}M</p>
               </div>
               <div>
                 <p className="text-gray-600">Meta Total</p>
-                <p className="font-semibold text-gray-900">$ {(oportunidad.montoTotal / 1000000).toFixed(1)}M</p>
+                <p className="font-semibold text-gray-900">{formatCurrency(oportunidad.montoTotal / 1000000)}M</p>
               </div>
             </div>
             <div className="mt-3 border-t border-blue-200 pt-3">
               <p className="text-xs text-gray-600">Monto Mínimo de Inversión</p>
-              <p className="font-bold text-gray-900">$ {(oportunidad.montoMinimo / 1000000).toFixed(1)}M</p>
+              <p className="font-bold text-gray-900">{formatCurrency(oportunidad.montoMinimo / 1000000)}M</p>
             </div>
           </div>
 

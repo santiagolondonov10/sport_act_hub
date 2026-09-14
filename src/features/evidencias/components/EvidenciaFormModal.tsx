@@ -189,18 +189,21 @@ export function EvidenciaFormModal({ abierto, onCerrar, onGuardar, evidenciaInic
                 <div>
                   <p className="text-sm font-medium text-gray-700 mb-1">Nuevo(s) archivo(s) ({archivos.length}):</p>
                   <ul className="space-y-1">
-                    {archivos.map((f, i) => (
-                      <li key={`new-${i}`} className="flex items-center justify-between text-xs text-gray-600 bg-gray-50 px-3 py-2 rounded-lg">
-                        <span className="truncate">• {f.name} ({(f.size / 1024 / 1024).toFixed(2)}MB)</span>
-                        <button
-                          type="button"
-                          onClick={() => setArchivos((prev) => prev.filter((_, idx) => idx !== i))}
-                          className="ml-2 text-danger-600 hover:text-danger-700 font-medium"
-                        >
-                          Quitar
-                        </button>
-                      </li>
-                    ))}
+                    {archivos.map((f, i) => {
+                      const tamanoMB = (f.size / 1024 / 1024).toFixed(2);
+                      return (
+                        <li key={`new-${i}`} className="flex items-center justify-between text-xs text-gray-600 bg-gray-50 px-3 py-2 rounded-lg">
+                          <span className="truncate">• {f.name} ({tamanoMB}MB)</span>
+                          <button
+                            type="button"
+                            onClick={() => setArchivos((prev) => prev.filter((_, idx) => idx !== i))}
+                            className="ml-2 text-danger-600 hover:text-danger-700 font-medium"
+                          >
+                            Quitar
+                          </button>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               )}

@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useLanguage } from '@/lib/LanguageContext';
 import { CATEGORIAS_ACTIVO, ESTADOS_ACTIVO } from '@/types';
-import { formatCOP, formatNumero } from '@/lib/format';
+import { formatCurrency, formatNumber } from '@/lib/formatters';
 import { useActivos } from '../store';
 import { useToast } from '@/hooks/useToast';
 import { getSessionUser, authHeaders } from '@/lib/auth';
@@ -87,9 +87,9 @@ export function ActivosListPage() {
       />
 
       <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <StatCard etiqueta={t('dashboard.totalActivos')} valor={formatNumero(activos.length)} icono={Package} tono="marca" />
-        <StatCard etiqueta={t('dashboard.disponibles')} valor={formatNumero(disponibles)} icono={PackageCheck} tono="exito" />
-        <StatCard etiqueta={t('dashboard.comprometidos')} valor={formatNumero(comprometidos)} icono={PackageX} tono="advertencia" />
+        <StatCard etiqueta={t('dashboard.totalActivos')} valor={formatNumber(activos.length)} icono={Package} tono="marca" />
+        <StatCard etiqueta={t('dashboard.disponibles')} valor={formatNumber(disponibles)} icono={PackageCheck} tono="exito" />
+        <StatCard etiqueta={t('dashboard.comprometidos')} valor={formatNumber(comprometidos)} icono={PackageX} tono="advertencia" />
       </div>
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -214,7 +214,7 @@ export function ActivosListPage() {
                     <p className="text-xs text-gray-500">{activo.canal}</p>
                   </td>
                   <td className="px-4 py-3 text-gray-600">{activo.categoriaNombre || 'Sin categoría'}</td>
-                  <td className="px-4 py-3 text-gray-600">{formatCOP(activo.valoracionCOP)}</td>
+                  <td className="px-4 py-3 text-gray-600">{formatCurrency(activo.valoracionCOP)}</td>
                   <td className="px-4 py-3 text-gray-600">
                     {activo.inventarioDisponible}/{activo.inventarioTotal}
                   </td>

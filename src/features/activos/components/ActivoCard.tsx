@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Package, UsersRound } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
-import { formatCOPCompact } from '@/lib/format';
+import { formatCurrency } from '@/lib/formatters';
 import { getInsigniasAudiencia } from '@/lib/activoAudiencia';
 import type { Activo } from '@/types';
 
@@ -34,7 +34,7 @@ export function ActivoCard({ activo }: { activo: Activo }) {
           </span>
         )}
         <div className="mt-auto flex items-center justify-between pt-2 text-sm">
-          <span className="font-semibold text-gray-900">{formatCOPCompact(activo.valoracionCOP)}</span>
+          <span className="font-semibold text-gray-900">{formatCurrency(activo.valoracionCOP)}</span>
           <span className="text-xs text-gray-500">
             {activo.inventarioDisponible}/{activo.inventarioTotal} disponible
           </span>

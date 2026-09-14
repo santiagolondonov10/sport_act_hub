@@ -9,7 +9,8 @@ import { Badge } from '@/components/ui/Badge';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useLanguage } from '@/lib/LanguageContext';
-import { formatCOP, formatCOPCompact, formatFecha } from '@/lib/format';
+import { formatFecha } from '@/lib/format';
+import { formatCurrency } from '@/lib/formatters';
 import { getCumplimientoPorAcuerdo, getTiempoConsumidoPorAcuerdo } from '@/lib/selectors';
 import type { EstadoAcuerdo } from '@/types';
 import { useAcuerdos } from '../store';
@@ -46,7 +47,7 @@ export function AcuerdosListPage() {
       <PageHeader titulo={t('acuerdos.title')} descripcion={t('acuerdos.patrocinios')} />
 
       <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <StatCard etiqueta={t('dashboard.valorVigente')} valor={formatCOPCompact(valorTotalActivo)} icono={Wallet} tono="marca" />
+        <StatCard etiqueta={t('dashboard.valorVigente')} valor={formatCurrency(valorTotalActivo)} icono={Wallet} tono="marca" />
         <StatCard etiqueta={t('dashboard.acuerdosTotales')} valor={String(acuerdos.length)} icono={FileSignature} tono="neutro" />
         <StatCard
           etiqueta={t('dashboard.proximosVencer')}
@@ -98,7 +99,7 @@ export function AcuerdosListPage() {
                       </Link>
                     </td>
                     <td className="px-4 py-3 text-gray-600">{marca?.nombre}</td>
-                    <td className="px-4 py-3 text-gray-600">{formatCOP(acuerdo.valorCOP)}</td>
+                    <td className="px-4 py-3 text-gray-600">{formatCurrency(acuerdo.valorCOP)}</td>
                     <td className="px-4 py-3 text-gray-500">
                       {formatFecha(acuerdo.fechaInicio)} – {formatFecha(acuerdo.fechaFin)}
                     </td>

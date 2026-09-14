@@ -7,6 +7,7 @@ import bcrypt from 'bcryptjs';
 import { config } from 'dotenv';
 import * as XLSX from 'xlsx';
 import { pool } from './db.js';
+import { sendOportunidadStatusEmail } from './emailService.js';
 
 // Load environment variables from .env file
 config();
@@ -1924,6 +1925,16 @@ const server = createServer(async (request, response) => {
       const oportunidadId = decodeURIComponent(oportunidadMatch[1]);
       const body = await readJson(request) as any;
 
+      console.log('🔄 Actualizando oportunidad:', { oportunidadId, body });
+
+      // Get current oportunidad data to check if etapa is being changed
+      const currentOportunidad = await pool.query(
+        `SELECT marca_id AS "marcaId", etapa FROM oportunidades WHERE id = $1 AND compania_id = $2`,
+        [oportunidadId, companiaId]
+      );
+      const etapaChanged = body.etapa !== undefined && currentOportunidad.rows[0]?.etapa !== body.etapa;
+      console.log('📊 Cambio de etapa:', { etapaAnterior: currentOportunidad.rows[0]?.etapa, etapaNueva: body.etapa, etapaChanged });
+
       const updates: string[] = [];
       const values: any[] = [oportunidadId, companiaId];
       let paramCount = 2;
@@ -2011,6 +2022,55 @@ const server = createServer(async (request, response) => {
       if (result.rows.length === 0) {
         sendJson(response, 404, { error: 'Oportunidad no encontrada.' });
         return;
+      }
+
+      // Send email notification if etapa changed
+      if (etapaChanged && body.etapa) {
+        const oportunidadFull = await pool.query(
+          `SELECT id, marca_id, responsable_id, valor_estimado_cop FROM oportunidades WHERE id = $1 AND compania_id = $2`,
+          [oportunidadId, companiaId]
+        );
+
+        if (oportunidadFull.rows.length > 0) {
+          const opp = oportunidadFull.rows[0];
+          // Extract contact number from responsable_id (format: "uuid-contacto1", "uuid-contacto2", etc.)
+          const contactMatch = opp.responsable_id?.match(/contacto(\d)/);
+          const numeroContacto = contactMatch ? parseInt(contactMatch[1]) : 1;
+
+          const marcaData = await pool.query(
+            `SELECT id, nombre, correo_contacto_1, correo_contacto_2, correo_contacto_3 FROM marcas WHERE id = $1`,
+            [opp.marca_id]
+          );
+
+          if (marcaData.rows.length > 0) {
+            const marca = marcaData.rows[0];
+            const emailField = `correo_contacto_${numeroContacto}`;
+            const email = marca[emailField];
+
+            console.log('📧 Datos de marca para notificación:', {
+              nombre: marca.nombre,
+              numeroContacto,
+              emailField,
+              email,
+              responsableId: opp.responsable_id
+            });
+
+            if (email) {
+              // Send email asynchronously (don't wait for it)
+              sendOportunidadStatusEmail(
+                { nombre: marca.nombre, contacto: { email } },
+                { valorEstimadoCOP: opp.valor_estimado_cop || 0, etapa: body.etapa }
+              ).catch(err => console.error('Error enviando notificación:', err));
+            } else {
+              console.warn('⚠️ Correo de contacto no disponible:', {
+                nombre: marca.nombre,
+                numeroContacto,
+                emailField,
+                responsableId: opp.responsable_id
+              });
+            }
+          }
+        }
       }
 
       sendJson(response, 200, result.rows[0]);
@@ -2962,6 +3022,80 @@ Responde a la siguiente pregunta en español de forma clara y concisa:
       sendJson(response, 500, { error: 'Error al generar el reporte.' });
       return;
     }
+  }
+
+  // Zoho OAuth Callback
+  if (request.method === 'GET' && request.url?.startsWith('/callback')) {
+    try {
+      const url = new URL(request.url, `http://${request.headers.host}`);
+      const code = url.searchParams.get('code');
+
+      if (!code) {
+        response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        response.end(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>Error - OAuth</title>
+              <style>
+                body { font-family: Arial, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; background: #f5f5f5; }
+                .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center; }
+                h1 { color: #d32f2f; }
+                p { color: #666; margin: 20px 0; }
+                .code { background: #f5f5f5; padding: 10px; border-radius: 4px; font-family: monospace; word-break: break-all; }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <h1>❌ Error en OAuth</h1>
+                <p>No se recibió el código de autorización.</p>
+              </div>
+            </body>
+          </html>
+        `);
+        return;
+      }
+
+      response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      response.end(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Código de Autorización - Zoho</title>
+            <style>
+              body { font-family: Arial, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; background: #f5f5f5; }
+              .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); max-width: 600px; }
+              h1 { color: #1976d2; margin-top: 0; }
+              p { color: #666; line-height: 1.6; }
+              .code-box { background: #f5f5f5; padding: 15px; border-radius: 4px; font-family: monospace; word-break: break-all; margin: 20px 0; border: 1px solid #ddd; }
+              .instruction { margin: 20px 0; padding: 15px; background: #e3f2fd; border-left: 4px solid #1976d2; border-radius: 4px; }
+              .env-var { background: #fff3e0; padding: 10px; border-radius: 4px; margin: 10px 0; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <h1>✅ Autorización Completada</h1>
+              <p>Tu código de autorización está listo. Cópialo exactamente y pégalo en la terminal:</p>
+
+              <div class="code-box">${code}</div>
+
+              <div class="instruction">
+                <strong>Próximos pasos:</strong>
+                <ol>
+                  <li>Copia el código de arriba</li>
+                  <li>Vuelve a la terminal</li>
+                  <li>Pégalo cuando se te solicite el "Código de autorización"</li>
+                  <li>Recibirás tu Access Token</li>
+                </ol>
+              </div>
+            </div>
+          </body>
+        </html>
+      `);
+    } catch (error) {
+      sendJson(response, 500, { error: 'Error procesando callback' });
+    }
+    return;
   }
 
   sendJson(response, 404, { error: 'Not found' });

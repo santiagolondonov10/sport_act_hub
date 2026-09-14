@@ -5,7 +5,7 @@ import type { Acuerdo } from '@/types/acuerdo';
 import { useToast } from '@/hooks/useToast';
 import { useMarcas } from '@/features/marcas/store';
 import { useAcuerdos } from '../store';
-import { formatCOP } from '@/lib/format';
+import { formatCurrency } from '@/lib/formatters';
 
 interface EditarAcuerdoModalProps {
   abierto: boolean;
@@ -201,7 +201,7 @@ export function EditarAcuerdoModal({ abierto, onCerrar, acuerdo, onAcuerdoActual
           <input
             type="text"
             name="valorCOP"
-            value={formularioAcuerdo.valorCOP > 0 ? formatCOP(formularioAcuerdo.valorCOP) : ''}
+            value={formularioAcuerdo.valorCOP > 0 ? formatCurrency(formularioAcuerdo.valorCOP) : ''}
             onChange={handleCambioAcuerdo}
             placeholder="0"
             className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-brand-600 focus:outline-none"

@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { acuerdos, marcas } from '@/data';
-import { formatCOP, formatFecha } from '@/lib/format';
+import { formatFecha } from '@/lib/format';
+import { formatCurrency } from '@/lib/formatters';
 import { getCumplimientoPorAcuerdo } from '@/lib/selectors';
 
 export function AcuerdosRelevantesTable() {
@@ -46,7 +47,7 @@ export function AcuerdosRelevantesTable() {
                     </Link>
                   </td>
                   <td className="py-2.5 pr-3 text-gray-600">{marca?.nombre}</td>
-                  <td className="py-2.5 pr-3 text-gray-600">{formatCOP(acuerdo.valorCOP)}</td>
+                  <td className="py-2.5 pr-3 text-gray-600">{formatCurrency(acuerdo.valorCOP)}</td>
                   <td className="py-2.5 pr-3 text-gray-500">{formatFecha(acuerdo.fechaFin)}</td>
                   <td className="py-2.5 pr-3">
                     <div className="flex items-center gap-2">

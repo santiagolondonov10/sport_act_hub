@@ -1,7 +1,7 @@
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { getPipelinePorEtapa } from '@/lib/selectors';
-import { formatCOPCompact, formatCOP, formatNumero } from '@/lib/format';
+import { formatCurrency, formatNumber } from '@/lib/formatters';
 
 const COLOR_ETAPA: Record<string, string> = {
   Prospección: '#9ca3af',
@@ -23,7 +23,7 @@ function TooltipPersonalizado({ active, payload }: { active?: boolean; payload?:
     <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs shadow-md">
       <p className="font-semibold text-gray-900">{etapa}</p>
       <p className="text-gray-500">{cantidad} oportunidad(es)</p>
-      <p className="font-medium text-gray-700">{formatCOP(valorCOP)}</p>
+      <p className="font-medium text-gray-700">{formatCurrency(valorCOP)}</p>
     </div>
   );
 }
@@ -36,7 +36,7 @@ export function PipelineChart() {
     <Card>
       <CardHeader
         title="Pipeline por etapa"
-        description={`${formatNumero(totalOportunidades)} oportunidades en seguimiento`}
+        description={`${formatNumber(totalOportunidades)} oportunidades en seguimiento`}
       />
       <CardContent>
         <div className="h-72 w-full">
@@ -54,7 +54,7 @@ export function PipelineChart() {
                 height={50}
               />
               <YAxis
-                tickFormatter={(valor: number) => formatCOPCompact(valor)}
+                tickFormatter={(valor: number) => formatCurrency(valor)}
                 tick={{ fontSize: 11, fill: '#6b7280' }}
                 axisLine={false}
                 tickLine={false}

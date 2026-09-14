@@ -6,6 +6,7 @@ import { TextField, TextAreaField, SelectField } from '@/components/ui/Field';
 import { ETAPAS_OPORTUNIDAD } from '@/types';
 import type { Oportunidad } from '@/types';
 import { authHeaders } from '@/lib/auth';
+import { formatNumber } from '@/lib/formatters';
 
 interface Marca {
   id: string;
@@ -251,7 +252,7 @@ export function OportunidadFormModal({ abierto, onCerrar, onGuardar, oportunidad
               <input
                 type="text"
                 min={0}
-                value={valorEstimadoCOP ? Number(valorEstimadoCOP).toLocaleString('es-CO') : ''}
+                value={valorEstimadoCOP ? formatNumber(Number(valorEstimadoCOP)) : ''}
                 onChange={(e) => {
                   const valor = e.target.value.replace(/\./g, '');
                   setValorEstimadoCOP(valor);
