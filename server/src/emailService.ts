@@ -115,7 +115,7 @@ export async function sendAcuerdoProximoAVencerEmail(
           <div style="background-color: #f9f9f9; border-left: 4px solid #0066cc; padding: 15px; margin: 20px 0;">
             <p style="margin: 5px 0;"><strong>Acuerdo:</strong> ${acuerdo.nombre}</p>
             <p style="margin: 5px 0;"><strong>Marca:</strong> ${marca.nombre}</p>
-            ${acuerdo.valor > 0 ? `<p style="margin: 5px 0;"><strong>Valor:</strong> $ ${acuerdo.valor.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>` : ''}
+            ${acuerdo.valor > 0 ? `<p style="margin: 5px 0;"><strong>Valor:</strong> $ ${formatCurrency(acuerdo.valor)}</p>` : ''}
             ${acuerdo.porcentajeConsumido !== undefined ? `<p style="margin: 5px 0;"><strong>Consumo Actual:</strong> <span style="color: #0066cc; font-weight: bold;">${acuerdo.porcentajeConsumido}%</span></p>` : ''}
             <p style="margin: 5px 0;"><strong>Vencimiento:</strong> <span style="color: #0066cc; font-weight: bold;">${acuerdo.vigenciaHasta}</span></p>
           </div>
@@ -164,7 +164,7 @@ export async function sendAcuerdoProximoAVencerEmail(
 export async function sendEvidenciaAprobacionEmail(
   marca: { nombre: string; contacto: { email: string } },
   evidencia: { titulo: string; descripcion: string; tipo: string; acuerdoNombre: string; evidenciaId: string },
-  archivos?: Array<{ nombre: string; tipo: string }>
+  archivos?: Array<{ nombre: string; tipo: string; datos?: string }>
 ) {
   try {
     const destinatario = marca.contacto.email;
@@ -174,7 +174,7 @@ export async function sendEvidenciaAprobacionEmail(
       return false;
     }
 
-    const apiUrl = process.env.API_URL || 'http://localhost:5173';
+    const apiUrl = process.env.API_URL || 'http://localhost:3001';
     const aprobarUrl = `${apiUrl}/api/evidencias/${evidencia.evidenciaId}/aprobar`;
     const rechazarUrl = `${apiUrl}/api/evidencias/${evidencia.evidenciaId}/rechazar`;
 
@@ -239,14 +239,25 @@ export async function sendEvidenciaAprobacionEmail(
       },
     });
 
-    const mailOptions = {
+    const attachments = (archivos || [])
+      .filter((a) => a.datos)
+      .map((a) => ({
+        filename: a.nombre,
+        content: Buffer.from(a.datos!, 'base64'),
+      }));
+
+    const mailOptions: any = {
       from: process.env.EMAIL_FROM || 'info@sportsact.co',
       to: destinatario,
       subject: `Aprobación de Evidencia - ${evidencia.titulo}`,
       html: htmlContent,
     };
 
-    console.log(`📧 Enviando solicitud de aprobación de evidencia a ${destinatario}`);
+    if (attachments.length > 0) {
+      mailOptions.attachments = attachments;
+    }
+
+    console.log(`📧 Enviando solicitud de aprobación de evidencia a ${destinatario}${attachments.length > 0 ? ` con ${attachments.length} archivo(s)` : ''}`);
     const result = await transporter.sendMail(mailOptions);
 
     console.log(`✅ Email de aprobación enviado exitosamente a ${destinatario}`);

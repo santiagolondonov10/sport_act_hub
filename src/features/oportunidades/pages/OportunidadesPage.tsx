@@ -1,22 +1,21 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { KanbanSquare, List, Plus, Target, TrendingUp, Trophy } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { StatCard } from '@/components/shared/StatCard';
 import { FilterSelect } from '@/components/shared/FilterSelect';
-import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useLanguage } from '@/lib/LanguageContext';
 import type { Oportunidad } from '@/types';
-import { formatCOP, formatCOPCompact, formatFecha } from '@/lib/format';
-import { getResponsable, responsables } from '@/data';
+import { formatCOPCompact } from '@/lib/format';
+import { responsables } from '@/data';
 import { useOportunidades } from '../store';
 import { useToast } from '@/hooks/useToast';
 import { useMarcas } from '@/features/marcas/store';
 import { useAcuerdos } from '@/features/acuerdos/store';
 import { KanbanBoard } from '../components/KanbanBoard';
 import { OportunidadFormModal } from '../components/OportunidadFormModal';
+import { OportunidadTableRow } from '../components/OportunidadTableRow';
 
 type Vista = 'kanban' | 'tabla';
 
@@ -151,27 +150,14 @@ export function OportunidadesPage() {
                 <th className="px-4 py-3 font-medium">{t('table.etapa')}</th>
                 <th className="px-4 py-3 font-medium">{t('table.estimado')}</th>
                 <th className="px-4 py-3 font-medium">{t('table.responsable')}</th>
-                <th className="px-4 py-3 font-medium">{t('table.cierreEstimado')}</th>
+                <th className="px-4 py-3 font-medium">Última notificación</th>
               </tr>
             </thead>
             <tbody>
               {filtradas.map((o) => {
                 const marca = marcas.find((m) => m.id === o.marcaId);
-                const responsable = getResponsable(o.responsableId);
                 return (
-                  <tr key={o.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60">
-                    <td className="px-4 py-3">
-                      <Link to={`/oportunidades/${o.id}`} className="font-medium text-gray-900 hover:text-brand-800 hover:underline">
-                        {marca?.nombre ?? 'Sin marca'}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge estado={o.etapa} />
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">{formatCOP(o.valorEstimadoCOP)}</td>
-                    <td className="px-4 py-3 text-gray-600">{responsable?.nombre}</td>
-                    <td className="px-4 py-3 text-gray-600">{formatFecha(o.fechaEstimadaCierre)}</td>
-                  </tr>
+                  <OportunidadTableRow key={o.id} oportunidad={o} marcaNombre={marca?.nombre ?? 'Sin marca'} />
                 );
               })}
             </tbody>

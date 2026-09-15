@@ -181,6 +181,46 @@ async function ensureEvidenciaFields() {
   }
 }
 
+async function ensureNotificacionLogsTable() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS notificacion_logs (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        tipo_entidad VARCHAR(50) NOT NULL,
+        entidad_id VARCHAR(100) NOT NULL,
+        destinatario_email VARCHAR(255) NOT NULL,
+        destinatario_nombre VARCHAR(255),
+        asunto TEXT,
+        fecha_envio TIMESTAMP DEFAULT NOW(),
+        estado VARCHAR(50) DEFAULT 'exitoso',
+        compania_id uuid
+      )
+    `);
+    console.log(`✅ Tabla notificacion_logs lista`);
+  } catch (error) {
+    console.error('❌ Error creando tabla notificacion_logs:', error);
+  }
+}
+
+async function guardarNotificacionLog(
+  tipoEntidad: 'evidencia' | 'oportunidad' | 'acuerdo',
+  entidadId: string,
+  destinatarioEmail: string,
+  destinatarioNombre: string,
+  asunto: string,
+  compañiaId?: string
+) {
+  try {
+    await pool.query(
+      `INSERT INTO notificacion_logs (tipo_entidad, entidad_id, destinatario_email, destinatario_nombre, asunto, compania_id)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [tipoEntidad, entidadId, destinatarioEmail, destinatarioNombre, asunto, compañiaId || null]
+    );
+  } catch (error) {
+    console.error('❌ Error guardando log de notificación:', error);
+  }
+}
+
 async function scheduleAcuerdoAlerts() {
   // Ejecutar cada 24 horas a las 7:00 AM hora colombiana (12:00 UTC)
   cron.schedule('0 12 * * *', async () => {
@@ -235,7 +275,7 @@ async function scheduleAcuerdoAlerts() {
           { porcentaje: 100, flag: 'alerta_100_enviada' },
         ];
 
-        const updateFlags = {};
+        const updateFlags: Record<string, boolean> = {};
         const emailsAEnviar = [];
 
         for (const umbral of umbrales) {
@@ -261,6 +301,15 @@ async function scheduleAcuerdoAlerts() {
                   umbral: email.umbral
                 }
               ).catch(err => console.error('❌ Error enviando email a marca:', err));
+
+              // Guardar log de notificación
+              guardarNotificacionLog(
+                'acuerdo',
+                acuerdo.id,
+                acuerdo.correo_contacto_1,
+                acuerdo.marca_nombre,
+                `Alerta de consumo ${email.umbral}% - ${acuerdo.nombre}`
+              );
             }
           }
 
@@ -277,6 +326,15 @@ async function scheduleAcuerdoAlerts() {
                   umbral: email.umbral
                 }
               ).catch(err => console.error('❌ Error enviando email a responsable:', err));
+
+              // Guardar log de notificación
+              guardarNotificacionLog(
+                'acuerdo',
+                acuerdo.id,
+                acuerdo.responsable_correo,
+                'Responsable Interno',
+                `Alerta de consumo ${email.umbral}% - ${acuerdo.nombre}`
+              );
             }
           }
 
@@ -2211,41 +2269,44 @@ const server = createServer(async (request, response) => {
 
         if (oportunidadFull.rows.length > 0) {
           const opp = oportunidadFull.rows[0];
-          // Extract contact number from responsable_id (format: "uuid-contacto1", "uuid-contacto2", etc.)
-          const contactMatch = opp.responsable_id?.match(/contacto(\d)/);
-          const numeroContacto = contactMatch ? parseInt(contactMatch[1]) : 1;
 
           const marcaData = await pool.query(
-            `SELECT id, nombre, correo_contacto_1, correo_contacto_2, correo_contacto_3 FROM marcas WHERE id = $1`,
+            `SELECT id, nombre, correo_contacto_1 FROM marcas WHERE id = $1`,
             [opp.marca_id]
           );
 
           if (marcaData.rows.length > 0) {
             const marca = marcaData.rows[0];
-            const emailField = `correo_contacto_${numeroContacto}`;
-            const email = marca[emailField];
+            const email = marca.correo_contacto_1;
 
-            console.log('📧 Datos de marca para notificación:', {
+            console.log('📧 Enviando notificación de oportunidad:', {
               nombre: marca.nombre,
-              numeroContacto,
-              emailField,
               email,
-              responsableId: opp.responsable_id
+              etapa: body.etapa
             });
 
             if (email) {
+              console.log(`✅ Enviando email a ${email} para marca ${marca.nombre}`);
               // Send email asynchronously (don't wait for it)
               sendOportunidadStatusEmail(
                 { nombre: marca.nombre, contacto: { email } },
                 { valorEstimadoCOP: opp.valor_estimado_cop || 0, etapa: body.etapa }
-              ).catch(err => console.error('Error enviando notificación:', err));
-            } else {
-              console.warn('⚠️ Correo de contacto no disponible:', {
-                nombre: marca.nombre,
-                numeroContacto,
-                emailField,
-                responsableId: opp.responsable_id
+              ).then(() => {
+                console.log(`✅ Email enviado correctamente a ${email}`);
+              }).catch(err => {
+                console.error(`❌ Error enviando notificación a ${email}:`, err);
               });
+
+              // Guardar log de notificación
+              guardarNotificacionLog(
+                'oportunidad',
+                opp.id,
+                email,
+                marca.nombre,
+                `Cambio de estado a ${body.etapa}`
+              );
+            } else {
+              console.warn('⚠️ Correo de contacto no disponible para marca:', marca.nombre);
             }
           }
         }
@@ -2875,7 +2936,7 @@ const server = createServer(async (request, response) => {
 
         if (marcaResult.rows.length > 0) {
           const marca = marcaResult.rows[0];
-          const archivosInfo = body.archivos ? body.archivos.map((a: any) => ({ nombre: a.nombre, tipo: a.tipo })) : [];
+          const archivos = body.archivos || [];
 
           sendEvidenciaAprobacionEmail(
             { nombre: marca.nombre, contacto: { email: marca.correo_contacto_1 } },
@@ -2886,7 +2947,7 @@ const server = createServer(async (request, response) => {
               acuerdoNombre: acuerdo.nombre,
               evidenciaId: evidenciaId
             },
-            archivosInfo
+            archivos
           ).catch(err => console.error('Error enviando email de aprobación:', err));
         }
       }
@@ -3108,7 +3169,7 @@ const server = createServer(async (request, response) => {
       // Send approval request email (async, don't wait)
       if (marca.correo_contacto_1) {
         try {
-          const archivosInfo = evidencia.archivos ? JSON.parse(evidencia.archivos).map((a: any) => ({ nombre: a.nombre, tipo: a.tipo })) : [];
+          const archivosArray = typeof evidencia.archivos === 'string' ? JSON.parse(evidencia.archivos) : (evidencia.archivos || []);
 
           sendEvidenciaAprobacionEmail(
             { nombre: marca.nombre, contacto: { email: marca.correo_contacto_1 } },
@@ -3119,8 +3180,17 @@ const server = createServer(async (request, response) => {
               acuerdoNombre: acuerdo.nombre,
               evidenciaId: evidenciaId
             },
-            archivosInfo
+            archivosArray
           ).catch(err => console.error('❌ Error enviando email de solicitud de revisión:', err));
+
+          // Guardar log de notificación
+          guardarNotificacionLog(
+            'evidencia',
+            evidenciaId,
+            marca.correo_contacto_1,
+            marca.nombre,
+            `Solicitud de revisión - ${evidencia.titulo}`
+          );
         } catch (emailErr) {
           console.error('❌ Error preparando email de solicitud de revisión:', emailErr);
         }
@@ -3459,6 +3529,29 @@ Responde a la siguiente pregunta en español de forma clara y concisa:
     return;
   }
 
+  // GET /api/notificacion-logs/:tipo/:id - Get notification logs for an entity
+  const notificacionLogsMatch = request.url?.match(/^\/api\/notificacion-logs\/([^/]+)\/([^/]+)$/);
+  if (request.method === 'GET' && notificacionLogsMatch) {
+    try {
+      const tipo = notificacionLogsMatch[1];
+      const entidadId = notificacionLogsMatch[2];
+
+      const result = await pool.query(
+        `SELECT * FROM notificacion_logs
+         WHERE tipo_entidad = $1 AND entidad_id = $2
+         ORDER BY fecha_envio DESC`,
+        [tipo, entidadId]
+      );
+
+      sendJson(response, 200, result.rows);
+      return;
+    } catch (error) {
+      console.error('Error fetching notification logs:', error);
+      sendJson(response, 500, { error: 'Error al obtener logs de notificación.' });
+      return;
+    }
+  }
+
   // POST /api/acuerdos/:id/enviar-alerta - Enviar alerta de acuerdo manualmente
   if (request.method === 'POST' && request.url?.match(/^\/api\/acuerdos\/[^/]+\/enviar-alerta/)) {
     try {
@@ -3512,10 +3605,19 @@ Responde a la siguiente pregunta en español de forma clara y concisa:
           { nombre: marca.nombre, contacto: { email: marca.correo_contacto_1 } },
           {
             nombre: acuerdo.nombre,
-            valor: acuerdo.valor_cop || 0,
+            valor: Number(acuerdo.valor_cop) || 0,
             vigenciaHasta: new Date(acuerdo.fecha_fin).toLocaleDateString('es-CO')
           }
         ).catch(err => console.error('❌ Error enviando alerta a marca:', err));
+
+        // Guardar log de notificación
+        guardarNotificacionLog(
+          'acuerdo',
+          acuerdoId,
+          marca.correo_contacto_1,
+          marca.nombre,
+          `Alerta de acuerdo próximo a vencer: ${acuerdo.nombre}`
+        );
       }
 
       // Enviar email al responsable interno
@@ -3524,10 +3626,19 @@ Responde a la siguiente pregunta en español de forma clara y concisa:
           { nombre: marca.nombre, contacto: { email: acuerdo.responsable_correo } },
           {
             nombre: acuerdo.nombre,
-            valor: acuerdo.valor_cop || 0,
+            valor: Number(acuerdo.valor_cop) || 0,
             vigenciaHasta: new Date(acuerdo.fecha_fin).toLocaleDateString('es-CO')
           }
         ).catch(err => console.error('❌ Error enviando alerta a responsable interno:', err));
+
+        // Guardar log de notificación
+        guardarNotificacionLog(
+          'acuerdo',
+          acuerdoId,
+          acuerdo.responsable_correo,
+          'Responsable Interno',
+          `Alerta de acuerdo próximo a vencer: ${acuerdo.nombre}`
+        );
       }
 
       console.log(`✅ Alertas enviadas para acuerdo: ${acuerdo.nombre}`);
@@ -3547,5 +3658,6 @@ server.listen(port, async () => {
   console.log(`Sports Act Hub API listening on http://localhost:${port}`);
   await ensureAcuerdoAlertaFields();
   await ensureEvidenciaFields();
+  await ensureNotificacionLogsTable();
   await scheduleAcuerdoAlerts();
 });

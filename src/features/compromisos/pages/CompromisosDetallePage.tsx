@@ -15,7 +15,7 @@ import { canalesAudiencia, campanasAudiencia, segmentosAudiencia } from '@/data'
 export function CompromisosDetallePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { compromisos, cambiarEstado } = useCompromisos();
+  const { compromisos } = useCompromisos();
   const { acuerdos } = useAcuerdos();
   const { marcas } = useMarcas();
   const { evidencias } = useEvidencias();
@@ -108,10 +108,10 @@ export function CompromisosDetallePage() {
               </div>
             </div>
 
-            {compromiso.descripcion && (
+            {compromiso.observaciones && (
               <div className="pt-4 border-t border-gray-100">
-                <p className="text-xs text-gray-500 mb-2">Descripción</p>
-                <p className="text-sm text-gray-700">{compromiso.descripcion}</p>
+                <p className="text-xs text-gray-500 mb-2">Observaciones</p>
+                <p className="text-sm text-gray-700">{compromiso.observaciones}</p>
               </div>
             )}
           </div>

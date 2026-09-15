@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { CheckCircle2, Clock, FolderCheck, KanbanSquare, List, Plus, XCircle, Mail } from 'lucide-react';
+import { CheckCircle2, Clock, FolderCheck, KanbanSquare, List, Plus, XCircle } from 'lucide-react';
 import { authHeaders } from '@/lib/auth';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { StatCard } from '@/components/shared/StatCard';
@@ -231,6 +231,11 @@ export function EvidenciasPage() {
         evidencia={seleccionada}
         onCerrar={() => setSeleccionada(null)}
         onEditar={handleEditar}
+        onSolicitarRevision={() => {
+          if (seleccionada) {
+            handleSolicitarRevision(seleccionada.id);
+          }
+        }}
       />
     </div>
   );

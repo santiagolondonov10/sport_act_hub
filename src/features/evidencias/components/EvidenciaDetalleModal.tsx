@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Download, Edit2, X } from 'lucide-react';
+import { Download, Edit2, X, Send } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -8,24 +8,27 @@ import { formatFechaLarga } from '@/lib/format';
 import { useAcuerdos } from '@/features/acuerdos/store';
 import { useMarcas } from '@/features/marcas/store';
 import { useCompromisos } from '@/features/compromisos/store';
+import { NotificacionLogsList } from '@/features/notificaciones/components/NotificacionLogsList';
+import { useNotificacionLogs } from '@/hooks/useNotificacionLogs';
 import type { Evidencia } from '@/types';
 
 interface EvidenciaDetalleModalProps {
   evidencia: Evidencia | null;
   onCerrar: () => void;
   onEditar?: (evidencia: Evidencia) => void;
+  onSolicitarRevision?: () => void;
 }
 
 const TIPOS_IMAGEN = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
-export function EvidenciaDetalleModal({ evidencia, onCerrar, onEditar }: EvidenciaDetalleModalProps) {
+export function EvidenciaDetalleModal({ evidencia, onCerrar, onEditar, onSolicitarRevision }: EvidenciaDetalleModalProps) {
   const [imagenAmpliada, setImagenAmpliada] = useState<{ nombre: string; tipo: string; datos: string } | null>(null);
-
-  if (!evidencia) return null;
-
   const { acuerdos } = useAcuerdos();
   const { marcas } = useMarcas();
   const { compromisos } = useCompromisos();
+  const { logs, isLoading } = useNotificacionLogs('evidencia', evidencia?.id);
+
+  if (!evidencia) return null;
 
   const compromiso = compromisos.find((c) => c.id === evidencia.compromisoId);
   const acuerdo = acuerdos.find((a) => a.id === evidencia.acuerdoId);
@@ -98,6 +101,10 @@ export function EvidenciaDetalleModal({ evidencia, onCerrar, onEditar }: Evidenc
           </div>
         </div>
 
+        <div className="border-t border-gray-100 pt-4">
+          <NotificacionLogsList logs={logs} isLoading={isLoading} />
+        </div>
+
         {evidencia.archivos && evidencia.archivos.length > 0 && (
           <div className="border-t border-gray-100 pt-4">
             <p className="text-xs font-medium text-gray-700 mb-2">Archivos adjuntos ({evidencia.archivos.length})</p>
@@ -127,18 +134,35 @@ export function EvidenciaDetalleModal({ evidencia, onCerrar, onEditar }: Evidenc
           </div>
         )}
 
-        {puedeEditar && onEditar && (
-          <Button
-            variante="secundario"
-            icono={<Edit2 size={15} />}
-            onClick={() => {
-              onEditar(evidencia);
-              onCerrar();
-            }}
-            className="w-full"
-          >
-            Editar evidencia
-          </Button>
+        {puedeEditar && (
+          <div className="flex gap-2">
+            {onEditar && (
+              <Button
+                variante="secundario"
+                icono={<Edit2 size={15} />}
+                onClick={() => {
+                  onEditar(evidencia);
+                  onCerrar();
+                }}
+                className="flex-1"
+              >
+                Editar
+              </Button>
+            )}
+            {onSolicitarRevision && (
+              <Button
+                variante="primario"
+                icono={<Send size={15} />}
+                onClick={() => {
+                  onSolicitarRevision();
+                  onCerrar();
+                }}
+                className="flex-1"
+              >
+                Solicitar revisión
+              </Button>
+            )}
+          </div>
         )}
 
         {!puedeEditar && (

@@ -15,9 +15,10 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { formatFecha } from '@/lib/format';
+import { formatFecha, formatFechaLarga } from '@/lib/format';
 import { useAcuerdos } from '@/features/acuerdos/store';
 import { useMarcas } from '@/features/marcas/store';
+import { useNotificacionLogs } from '@/hooks/useNotificacionLogs';
 import type { Evidencia, TipoEvidencia } from '@/types';
 
 const ICONOS_TIPO: Record<TipoEvidencia, LucideIcon> = {
@@ -46,6 +47,7 @@ interface EvidenciaCardProps {
 export function EvidenciaCard({ evidencia, onSeleccionar, onSolicitarRevision }: EvidenciaCardProps) {
   const { acuerdos } = useAcuerdos();
   const { marcas } = useMarcas();
+  const { ultimaNotificacion } = useNotificacionLogs('evidencia', evidencia.id);
 
   const acuerdo = acuerdos.find((a) => a.id === evidencia.acuerdoId);
   const marca = acuerdo ? marcas.find((m) => m.id === acuerdo.marcaId) : undefined;
@@ -80,6 +82,9 @@ export function EvidenciaCard({ evidencia, onSeleccionar, onSolicitarRevision }:
         {acuerdo && <p className="text-xs text-gray-500">{acuerdo.nombre}</p>}
         {evidencia.responsableId && <p className="text-xs text-gray-600">Responsable: {evidencia.responsableId}</p>}
         <p className="line-clamp-2 text-xs text-gray-500">{evidencia.descripcion}</p>
+        {ultimaNotificacion && (
+          <p className="text-xs text-gray-500">Última notificación: {formatFechaLarga(new Date(ultimaNotificacion.fecha_envio).toISOString().split('T')[0])}</p>
+        )}
         <p className="mt-auto pt-2 text-xs text-gray-400">
           {evidencia.tipo} · {formatFecha(evidencia.fechaEjecucion)}
         </p>

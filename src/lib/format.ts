@@ -85,6 +85,16 @@ export function formatFechaHora(fechaISO: string | null | undefined): string {
   }).format(fecha);
 }
 
+export function formatHora(fechaISO: string | null | undefined): string {
+  if (!fechaISO) return '-';
+  const fecha = new Date(fechaISO);
+  if (isNaN(fecha.getTime())) return '-';
+  return new Intl.DateTimeFormat(LOCALE, {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(fecha);
+}
+
 export function diasHasta(fechaISO: string | null | undefined): number {
   if (!esValidoISO(fechaISO) || !fechaISO) return 0;
   const hoy = new Date();

@@ -1,24 +1,18 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { FileSignature, TriangleAlert, Wallet, MessageSquare } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+import { FileSignature, TriangleAlert, Wallet } from 'lucide-react';
 import { useToast } from '@/hooks/useToast';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { StatCard } from '@/components/shared/StatCard';
 import { SearchInput } from '@/components/shared/SearchInput';
 import { FilterSelect } from '@/components/shared/FilterSelect';
-import { Badge } from '@/components/ui/Badge';
-import { ProgressBar } from '@/components/ui/ProgressBar';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useLanguage } from '@/lib/LanguageContext';
-import { formatFecha } from '@/lib/format';
 import { formatCurrency } from '@/lib/formatters';
 import { authHeaders } from '@/lib/auth';
-import { getCumplimientoPorAcuerdo, getTiempoConsumidoPorAcuerdo } from '@/lib/selectors';
 import type { EstadoAcuerdo } from '@/types';
 import { useAcuerdos } from '../store';
 import { useMarcas } from '@/features/marcas/store';
-import { AlertaSemaforoAcuerdo } from '../components/AlertaSemaforoAcuerdo';
+import { AcuerdoTableRow } from '../components/AcuerdoTableRow';
 
 const ESTADOS: EstadoAcuerdo[] = ['Borrador', 'Activo', 'Próximo a vencer', 'Finalizado', 'Cancelado'];
 
@@ -116,53 +110,21 @@ export function AcuerdosListPage() {
                 <th className="px-4 py-3 font-medium">Alerta</th>
                 <th className="px-4 py-3 font-medium">{t('table.cumplimiento')}</th>
                 <th className="px-4 py-3 font-medium">{t('table.estado')}</th>
+                <th className="px-4 py-3 font-medium">Última notificación</th>
                 <th className="px-4 py-3 font-medium text-center">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {filtrados.map((acuerdo) => {
                 const marca = marcas.find((m) => m.id === acuerdo.marcaId);
-                const cumplimiento = getCumplimientoPorAcuerdo(acuerdo.id);
-                const tiempoConsumido = getTiempoConsumidoPorAcuerdo(acuerdo.fechaInicio, acuerdo.fechaFin);
-                const mostrarBotonAlerta = tiempoConsumido > 80;
                 return (
-                  <tr key={acuerdo.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60">
-                    <td className="px-4 py-3">
-                      <Link to={`/acuerdos/${acuerdo.id}`} className="font-medium text-gray-900 hover:text-brand-800 hover:underline">
-                        {acuerdo.nombre}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">{marca?.nombre}</td>
-                    <td className="px-4 py-3 text-gray-600">{formatCurrency(acuerdo.valorCOP)}</td>
-                    <td className="px-4 py-3 text-gray-500">
-                      {formatFecha(acuerdo.fechaInicio)} – {formatFecha(acuerdo.fechaFin)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <AlertaSemaforoAcuerdo tiempoConsumido={tiempoConsumido} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <ProgressBar valor={cumplimiento} className="w-20" />
-                        <span className="text-xs text-gray-500">{cumplimiento}%</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge estado={acuerdo.estado} />
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {mostrarBotonAlerta && (
-                        <Button
-                          variante="peligro"
-                          icono={<MessageSquare size={14} />}
-                          onClick={() => handleEnviarAlerta(acuerdo.id)}
-                          disabled={enviandoAlerta === acuerdo.id}
-                          className="text-xs"
-                        >
-                          {enviandoAlerta === acuerdo.id ? '...' : 'Alerta'}
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
+                  <AcuerdoTableRow
+                    key={acuerdo.id}
+                    acuerdo={acuerdo}
+                    marcaNombre={marca?.nombre}
+                    enviandoAlerta={enviandoAlerta}
+                    onEnviarAlerta={handleEnviarAlerta}
+                  />
                 );
               })}
             </tbody>

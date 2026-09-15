@@ -12,11 +12,13 @@ import { formatCurrency } from '@/lib/formatters';
 import { getResponsable, getReportePorAcuerdo } from '@/data';
 import { getCumplimientoPorAcuerdo, getTiempoConsumidoPorAcuerdo } from '@/lib/selectors';
 import { useToast } from '@/hooks/useToast';
+import { useNotificacionLogs } from '@/hooks/useNotificacionLogs';
 import { authHeaders } from '@/lib/auth';
 import { useAcuerdos } from '../store';
 import { useMarcas } from '@/features/marcas/store';
 import { useActivos } from '@/features/activos/store';
 import { useCompromisos } from '@/features/compromisos/store';
+import { NotificacionLogsList } from '@/features/notificaciones/components/NotificacionLogsList';
 import { EditarAcuerdoModal } from '../components/EditarAcuerdoModal';
 import { CompromisoFormModal } from '@/features/compromisos/components/CompromisoFormModal';
 import { AlertaSemaforoAcuerdo } from '../components/AlertaSemaforoAcuerdo';
@@ -30,6 +32,7 @@ export function AcuerdoDetallePage() {
   const { marcas } = useMarcas();
   const { activos } = useActivos();
   const { compromisos, crearCompromiso, actualizarCompromiso, eliminarCompromiso } = useCompromisos();
+  const { logs, isLoading: logsLoading } = useNotificacionLogs('acuerdo', acuerdoId);
   const [modalEditarAbierto, setModalEditarAbierto] = useState(false);
   const [modalCompromisoAbierto, setModalCompromisoAbierto] = useState(false);
   const [compromisoEditando, setCompromisoEditando] = useState<string | null>(null);
@@ -373,6 +376,13 @@ export function AcuerdoDetallePage() {
                   </Button>
                 )
               )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader title="Notificaciones" />
+            <CardContent>
+              <NotificacionLogsList logs={logs} isLoading={logsLoading} />
             </CardContent>
           </Card>
         </div>

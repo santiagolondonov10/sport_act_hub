@@ -11,9 +11,11 @@ import type { Oportunidad } from '@/types';
 import { formatCOP, formatFecha, formatFechaLarga } from '@/lib/format';
 import { useOportunidades } from '../store';
 import { useToast } from '@/hooks/useToast';
+import { useNotificacionLogs } from '@/hooks/useNotificacionLogs';
 import { OportunidadFormModal } from '../components/OportunidadFormModal';
 import { CrearAcuerdoModal } from '../components/CrearAcuerdoModal';
 import { EditarAcuerdoModal } from '@/features/acuerdos/components/EditarAcuerdoModal';
+import { NotificacionLogsList } from '@/features/notificaciones/components/NotificacionLogsList';
 import { authHeaders } from '@/lib/auth';
 import { useMarcas } from '@/features/marcas/store';
 import { useActivos } from '@/features/activos/store';
@@ -27,6 +29,7 @@ export function OportunidadDetallePage() {
   const { marcas } = useMarcas();
   const { activos } = useActivos();
   const { eliminarAcuerdo } = useAcuerdos();
+  const { logs, isLoading: logsLoading } = useNotificacionLogs('oportunidad', oportunidadId);
   const [modalAbierto, setModalAbierto] = useState(false);
   const [modalAcuerdoAbierto, setModalAcuerdoAbierto] = useState(false);
   const [modalEditarAcuerdoAbierto, setModalEditarAcuerdoAbierto] = useState(false);
@@ -695,6 +698,13 @@ export function OportunidadDetallePage() {
                 <span className="text-gray-500">Cierre estimado</span>
                 <span className="text-gray-700">{formatFecha(oportunidad.fechaEstimadaCierre)}</span>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader title="Notificaciones" />
+            <CardContent>
+              <NotificacionLogsList logs={logs} isLoading={logsLoading} />
             </CardContent>
           </Card>
 
