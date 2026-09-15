@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { CheckCircle2, FileSignature, Mail, Phone, RefreshCcw, User, Pencil, Trash2, Plus } from 'lucide-react';
+import { CheckCircle2, FileSignature, Mail, Phone, RefreshCcw, User, Pencil, Trash2, Plus, AlertCircle } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -12,6 +12,7 @@ import { formatCurrency } from '@/lib/formatters';
 import { getResponsable, getReportePorAcuerdo } from '@/data';
 import { getCumplimientoPorAcuerdo, getTiempoConsumidoPorAcuerdo } from '@/lib/selectors';
 import { useToast } from '@/hooks/useToast';
+import { authHeaders } from '@/lib/auth';
 import { useAcuerdos } from '../store';
 import { useMarcas } from '@/features/marcas/store';
 import { useActivos } from '@/features/activos/store';
@@ -33,6 +34,7 @@ export function AcuerdoDetallePage() {
   const [modalCompromisoAbierto, setModalCompromisoAbierto] = useState(false);
   const [compromisoEditando, setCompromisoEditando] = useState<string | null>(null);
   const [eliminando, setEliminando] = useState(false);
+  const [enviandoAlerta, setEnviandoAlerta] = useState(false);
 
   const acuerdo = acuerdoId ? acuerdos.find((a) => a.id === acuerdoId) : undefined;
 
@@ -69,6 +71,50 @@ export function AcuerdoDetallePage() {
     mostrarToast('Seguimiento de renovación registrado para este acuerdo.');
   }
 
+  async function handleEnviarAlerta() {
+    if (!acuerdo || !confirm('¿Deseas enviar una alerta de vencimiento a la marca y al responsable interno?')) return;
+
+    setEnviandoAlerta(true);
+    try {
+      const headers = new Headers();
+      headers.set('Content-Type', 'application/json');
+      Object.entries(authHeaders()).forEach(([key, value]) => headers.set(key, value));
+
+      const response = await fetch(`/api/acuerdos/${acuerdo!.id}/enviar-alerta`, {
+        method: 'POST',
+        headers,
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al enviar la alerta');
+      }
+
+      mostrarToast('Alerta enviada correctamente a la marca y responsable interno.');
+    } catch (error) {
+      mostrarToast(error instanceof Error ? error.message : 'Error al enviar la alerta.');
+    } finally {
+      setEnviandoAlerta(false);
+    }
+  }
+
+  const tiempoConsumido = acuerdo ? getTiempoConsumidoPorAcuerdo(acuerdo.fechaInicio, acuerdo.fechaFin) : 0;
+  const mostrarBotonAlerta = acuerdo && tiempoConsumido > 80;
+
+  if (!acuerdo) {
+    return (
+      <EmptyState
+        icono={FileSignature}
+        titulo="Acuerdo no encontrado"
+        descripcion="Es posible que haya sido eliminado o el enlace sea incorrecto."
+        accion={
+          <Link to="/acuerdos">
+            <Button variante="primario">Volver a Acuerdos</Button>
+          </Link>
+        }
+      />
+    );
+  }
+
   return (
     <div>
       <PageHeader
@@ -80,6 +126,16 @@ export function AcuerdoDetallePage() {
               <Link to={`/reportes/${acuerdo.id}`}>
                 <Button variante="secundario">Ver reporte ejecutivo</Button>
               </Link>
+            )}
+            {mostrarBotonAlerta && (
+              <Button
+                variante="peligro"
+                icono={<AlertCircle size={15} />}
+                onClick={handleEnviarAlerta}
+                disabled={enviandoAlerta}
+              >
+                {enviandoAlerta ? 'Enviando...' : 'Enviar Alerta'}
+              </Button>
             )}
             <Button
               variante="secundario"
@@ -242,7 +298,7 @@ export function AcuerdoDetallePage() {
 
         <div className="space-y-4">
           <Card>
-            <CardHeader title="Patrocinador" />
+            <CardHeader title="Marca" />
             <CardContent className="space-y-2">
               <p className="text-sm font-semibold text-gray-900">{marca?.nombre}</p>
               <p className="text-xs text-gray-500">{marca?.sectorId}</p>

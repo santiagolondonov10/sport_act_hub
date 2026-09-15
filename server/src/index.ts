@@ -6,8 +6,9 @@ import { randomUUID } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { config } from 'dotenv';
 import * as XLSX from 'xlsx';
+import cron from 'node-cron';
 import { pool } from './db.js';
-import { sendOportunidadStatusEmail } from './emailService.js';
+import { sendOportunidadStatusEmail, sendAcuerdoProximoAVencerEmail } from './emailService.js';
 
 // Load environment variables from .env file
 config();
@@ -125,6 +126,161 @@ async function getUserCompaniaId(userId: string): Promise<string | null> {
   }
 
   return result.rows[0]?.compania_id ?? null;
+}
+
+async function ensureAcuerdoAlertaFields() {
+  try {
+    // Verificar si existen los campos de alertas, si no, crearlos
+    const campos = [
+      'alerta_80_enviada',
+      'alerta_90_enviada',
+      'alerta_95_enviada',
+      'alerta_99_enviada',
+      'alerta_100_enviada'
+    ];
+
+    for (const campo of campos) {
+      try {
+        await pool.query(`
+          ALTER TABLE acuerdos
+          ADD COLUMN ${campo} boolean DEFAULT false
+        `);
+        console.log(`✅ Campo ${campo} creado en tabla acuerdos`);
+      } catch (error: any) {
+        if (error.code === '42701') {
+          // Columna ya existe
+          continue;
+        }
+        throw error;
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error ensurando campos de alertas:', error);
+  }
+}
+
+async function scheduleAcuerdoAlerts() {
+  // Ejecutar cada 24 horas a las 7:00 AM hora colombiana (12:00 UTC)
+  cron.schedule('0 12 * * *', async () => {
+    console.log('🔔 Verificando acuerdos para alertas de porcentaje...');
+    try {
+      // Obtener todos los acuerdos activos con sus compromisos
+      const acuerdosResult = await pool.query(`
+        SELECT
+          a.id,
+          a.nombre,
+          a.fecha_inicio,
+          a.fecha_fin,
+          a.marca_id,
+          a.responsable_correo,
+          a.alerta_80_enviada,
+          a.alerta_90_enviada,
+          a.alerta_95_enviada,
+          a.alerta_99_enviada,
+          a.alerta_100_enviada,
+          m.nombre as marca_nombre,
+          m.correo_contacto_1,
+          COUNT(DISTINCT e.id) as total_evidencias,
+          COUNT(DISTINCT CASE WHEN e.estado IN ('Aprobada', 'En revisión') THEN e.id END) as evidencias_activas
+        FROM acuerdos a
+        LEFT JOIN marcas m ON a.marca_id = m.id
+        LEFT JOIN compromisos c ON a.id = c.acuerdo_id
+        LEFT JOIN evidencias e ON c.id = e.compromiso_id
+        WHERE a.estado = 'Activo'
+        GROUP BY a.id, a.nombre, a.fecha_inicio, a.fecha_fin, a.marca_id, a.responsable_correo,
+                 a.alerta_80_enviada, a.alerta_90_enviada, a.alerta_95_enviada, a.alerta_99_enviada, a.alerta_100_enviada,
+                 m.nombre, m.correo_contacto_1
+      `);
+
+      for (const acuerdo of acuerdosResult.rows) {
+        // Calcular porcentaje consumido
+        const fechaInicio = new Date(acuerdo.fecha_inicio).getTime();
+        const fechaFin = new Date(acuerdo.fecha_fin).getTime();
+        const ahora = Date.now();
+
+        const duracionTotal = fechaFin - fechaInicio;
+        const tiempoTranscurrido = ahora - fechaInicio;
+        const porcentajeConsumido = Math.round((tiempoTranscurrido / duracionTotal) * 100);
+
+        console.log(`\n📊 Acuerdo "${acuerdo.nombre}": ${porcentajeConsumido}% consumido`);
+
+        // Definir umbrales y sus flags correspondientes
+        const umbrales = [
+          { porcentaje: 80, flag: 'alerta_80_enviada' },
+          { porcentaje: 90, flag: 'alerta_90_enviada' },
+          { porcentaje: 95, flag: 'alerta_95_enviada' },
+          { porcentaje: 99, flag: 'alerta_99_enviada' },
+          { porcentaje: 100, flag: 'alerta_100_enviada' },
+        ];
+
+        const updateFlags = {};
+        const emailsAEnviar = [];
+
+        for (const umbral of umbrales) {
+          if (porcentajeConsumido >= umbral.porcentaje && !acuerdo[umbral.flag]) {
+            console.log(`⚠️ Alerta de ${umbral.porcentaje}% alcanzada para "${acuerdo.nombre}"`);
+            updateFlags[umbral.flag] = true;
+            emailsAEnviar.push({ umbral: umbral.porcentaje });
+          }
+        }
+
+        // Enviar emails si hay nuevas alertas
+        if (emailsAEnviar.length > 0) {
+          // Email al contacto de la marca
+          if (acuerdo.correo_contacto_1) {
+            for (const email of emailsAEnviar) {
+              await sendAcuerdoProximoAVencerEmail(
+                { nombre: acuerdo.marca_nombre, contacto: { email: acuerdo.correo_contacto_1 } },
+                {
+                  nombre: acuerdo.nombre,
+                  valor: 0,
+                  vigenciaHasta: new Date(acuerdo.fecha_fin).toLocaleDateString('es-CO'),
+                  porcentajeConsumido,
+                  umbral: email.umbral
+                }
+              ).catch(err => console.error('❌ Error enviando email a marca:', err));
+            }
+          }
+
+          // Email al responsable interno
+          if (acuerdo.responsable_correo) {
+            for (const email of emailsAEnviar) {
+              await sendAcuerdoProximoAVencerEmail(
+                { nombre: acuerdo.marca_nombre, contacto: { email: acuerdo.responsable_correo } },
+                {
+                  nombre: acuerdo.nombre,
+                  valor: 0,
+                  vigenciaHasta: new Date(acuerdo.fecha_fin).toLocaleDateString('es-CO'),
+                  porcentajeConsumido,
+                  umbral: email.umbral
+                }
+              ).catch(err => console.error('❌ Error enviando email a responsable:', err));
+            }
+          }
+
+          // Actualizar flags en la base de datos
+          if (Object.keys(updateFlags).length > 0) {
+            const updates = Object.entries(updateFlags)
+              .map(([key], idx) => `${key} = $${idx + 1}`)
+              .join(', ');
+            const values = Object.values(updateFlags);
+
+            await pool.query(
+              `UPDATE acuerdos SET ${updates} WHERE id = $${values.length + 1}`,
+              [...values, acuerdo.id]
+            );
+            console.log(`✅ Flags actualizados para "${acuerdo.nombre}"`);
+          }
+        }
+      }
+
+      console.log('✅ Verificación de alertas completada');
+    } catch (error) {
+      console.error('❌ Error en el scheduler de acuerdos:', error);
+    }
+  });
+
+  console.log('⏰ Scheduler de alertas de acuerdos activado (7:00 AM hora colombiana - 12:00 UTC)');
 }
 
 async function getAdminConfiguration() {
@@ -3098,9 +3254,92 @@ Responde a la siguiente pregunta en español de forma clara y concisa:
     return;
   }
 
+  // POST /api/acuerdos/:id/enviar-alerta - Enviar alerta de acuerdo manualmente
+  if (request.method === 'POST' && request.url?.match(/^\/api\/acuerdos\/[^/]+\/enviar-alerta/)) {
+    try {
+      const acuerdoId = request.url.split('/')[3];
+      const userId = request.headers['x-user-id'] as string;
+
+      if (!userId) {
+        sendJson(response, 401, { error: 'No autorizado' });
+        return;
+      }
+
+      const companiaId = await getUserCompaniaId(userId);
+      if (!companiaId) {
+        sendJson(response, 401, { error: 'No autorizado' });
+        return;
+      }
+
+      // Get acuerdo data
+      const acuerdoResult = await pool.query(
+        `SELECT id, nombre, valor_cop, fecha_fin, marca_id, responsable_correo
+        FROM acuerdos WHERE id = $1 AND compania_id = $2`,
+        [acuerdoId, companiaId]
+      );
+
+      if (acuerdoResult.rows.length === 0) {
+        console.error(`❌ Acuerdo ${acuerdoId} no encontrado`);
+        sendJson(response, 404, { error: 'Acuerdo no encontrado' });
+        return;
+      }
+
+      const acuerdo = acuerdoResult.rows[0];
+
+      // Get marca data
+      const marcaResult = await pool.query(
+        `SELECT id, nombre, persona_contacto_1, correo_contacto_1
+        FROM marcas WHERE id = $1`,
+        [acuerdo.marca_id]
+      );
+
+      if (marcaResult.rows.length === 0) {
+        console.error(`❌ Marca no encontrada para acuerdo ${acuerdoId}`);
+        sendJson(response, 404, { error: 'Marca no encontrada' });
+        return;
+      }
+
+      const marca = marcaResult.rows[0];
+
+      // Enviar email al contacto de la marca
+      if (marca.correo_contacto_1) {
+        sendAcuerdoProximoAVencerEmail(
+          { nombre: marca.nombre, contacto: { email: marca.correo_contacto_1 } },
+          {
+            nombre: acuerdo.nombre,
+            valor: acuerdo.valor_cop || 0,
+            vigenciaHasta: new Date(acuerdo.fecha_fin).toLocaleDateString('es-CO')
+          }
+        ).catch(err => console.error('❌ Error enviando alerta a marca:', err));
+      }
+
+      // Enviar email al responsable interno
+      if (acuerdo.responsable_correo) {
+        sendAcuerdoProximoAVencerEmail(
+          { nombre: marca.nombre, contacto: { email: acuerdo.responsable_correo } },
+          {
+            nombre: acuerdo.nombre,
+            valor: acuerdo.valor_cop || 0,
+            vigenciaHasta: new Date(acuerdo.fecha_fin).toLocaleDateString('es-CO')
+          }
+        ).catch(err => console.error('❌ Error enviando alerta a responsable interno:', err));
+      }
+
+      console.log(`✅ Alertas enviadas para acuerdo: ${acuerdo.nombre}`);
+      sendJson(response, 200, { success: true, message: 'Alerta enviada correctamente.' });
+      return;
+    } catch (error) {
+      console.error('Error enviando alerta:', error);
+      sendJson(response, 500, { error: 'Error al enviar la alerta.' });
+      return;
+    }
+  }
+
   sendJson(response, 404, { error: 'Not found' });
 });
 
-server.listen(port, () => {
+server.listen(port, async () => {
   console.log(`Sports Act Hub API listening on http://localhost:${port}`);
+  await ensureAcuerdoAlertaFields();
+  await scheduleAcuerdoAlerts();
 });

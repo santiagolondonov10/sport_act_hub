@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileSignature, TriangleAlert, Wallet } from 'lucide-react';
+import { FileSignature, TriangleAlert, Wallet, MessageSquare } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import { useToast } from '@/hooks/useToast';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { StatCard } from '@/components/shared/StatCard';
 import { SearchInput } from '@/components/shared/SearchInput';
@@ -11,6 +13,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { useLanguage } from '@/lib/LanguageContext';
 import { formatFecha } from '@/lib/format';
 import { formatCurrency } from '@/lib/formatters';
+import { authHeaders } from '@/lib/auth';
 import { getCumplimientoPorAcuerdo, getTiempoConsumidoPorAcuerdo } from '@/lib/selectors';
 import type { EstadoAcuerdo } from '@/types';
 import { useAcuerdos } from '../store';
@@ -21,10 +24,38 @@ const ESTADOS: EstadoAcuerdo[] = ['Borrador', 'Activo', 'Próximo a vencer', 'Fi
 
 export function AcuerdosListPage() {
   const { t } = useLanguage();
+  const { mostrarToast } = useToast();
   const { acuerdos } = useAcuerdos();
   const { marcas } = useMarcas();
   const [busqueda, setBusqueda] = useState('');
   const [estado, setEstado] = useState('todos');
+  const [enviandoAlerta, setEnviandoAlerta] = useState<string | null>(null);
+
+  async function handleEnviarAlerta(acuerdoId: string) {
+    if (!confirm('¿Deseas enviar una alerta de vencimiento a la marca y al responsable interno?')) return;
+
+    setEnviandoAlerta(acuerdoId);
+    try {
+      const headers = new Headers();
+      headers.set('Content-Type', 'application/json');
+      Object.entries(authHeaders()).forEach(([key, value]) => headers.set(key, value));
+
+      const response = await fetch(`/api/acuerdos/${acuerdoId}/enviar-alerta`, {
+        method: 'POST',
+        headers,
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al enviar la alerta');
+      }
+
+      mostrarToast('Alerta enviada correctamente.');
+    } catch (error) {
+      mostrarToast(error instanceof Error ? error.message : 'Error al enviar la alerta.');
+    } finally {
+      setEnviandoAlerta(null);
+    }
+  }
 
   const filtrados = useMemo(() => {
     return acuerdos.filter((a) => {
@@ -85,12 +116,15 @@ export function AcuerdosListPage() {
                 <th className="px-4 py-3 font-medium">Alerta</th>
                 <th className="px-4 py-3 font-medium">{t('table.cumplimiento')}</th>
                 <th className="px-4 py-3 font-medium">{t('table.estado')}</th>
+                <th className="px-4 py-3 font-medium text-center">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {filtrados.map((acuerdo) => {
                 const marca = marcas.find((m) => m.id === acuerdo.marcaId);
                 const cumplimiento = getCumplimientoPorAcuerdo(acuerdo.id);
+                const tiempoConsumido = getTiempoConsumidoPorAcuerdo(acuerdo.fechaInicio, acuerdo.fechaFin);
+                const mostrarBotonAlerta = tiempoConsumido > 80;
                 return (
                   <tr key={acuerdo.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60">
                     <td className="px-4 py-3">
@@ -104,7 +138,7 @@ export function AcuerdosListPage() {
                       {formatFecha(acuerdo.fechaInicio)} – {formatFecha(acuerdo.fechaFin)}
                     </td>
                     <td className="px-4 py-3">
-                      <AlertaSemaforoAcuerdo tiempoConsumido={getTiempoConsumidoPorAcuerdo(acuerdo.fechaInicio, acuerdo.fechaFin)} />
+                      <AlertaSemaforoAcuerdo tiempoConsumido={tiempoConsumido} />
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -114,6 +148,19 @@ export function AcuerdosListPage() {
                     </td>
                     <td className="px-4 py-3">
                       <Badge estado={acuerdo.estado} />
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {mostrarBotonAlerta && (
+                        <Button
+                          variante="peligro"
+                          icono={<MessageSquare size={14} />}
+                          onClick={() => handleEnviarAlerta(acuerdo.id)}
+                          disabled={enviandoAlerta === acuerdo.id}
+                          className="text-xs"
+                        >
+                          {enviandoAlerta === acuerdo.id ? '...' : 'Alerta'}
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 );
