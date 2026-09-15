@@ -7,9 +7,10 @@ interface EvidenciasKanbanColumnProps {
   estado: EstadoEvidencia;
   evidencias: Evidencia[];
   onSeleccionar: (evidencia: Evidencia) => void;
+  onSolicitarRevision?: (evidenciaId: string) => void;
 }
 
-export function EvidenciasKanbanColumn({ estado, evidencias, onSeleccionar }: EvidenciasKanbanColumnProps) {
+export function EvidenciasKanbanColumn({ estado, evidencias, onSeleccionar, onSolicitarRevision }: EvidenciasKanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: estado });
   const estilo = getEstiloEstado(estado);
 
@@ -35,6 +36,7 @@ export function EvidenciasKanbanColumn({ estado, evidencias, onSeleccionar }: Ev
             <EvidenciaCard
               evidencia={evidencia}
               onSeleccionar={() => onSeleccionar(evidencia)}
+              onSolicitarRevision={onSolicitarRevision ? () => onSolicitarRevision(evidencia.id) : undefined}
             />
           </div>
         ))}

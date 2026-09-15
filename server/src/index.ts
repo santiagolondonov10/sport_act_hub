@@ -2923,7 +2923,7 @@ const server = createServer(async (request, response) => {
 
       // Send approval email to marca
       const acuerdoResult = await pool.query(
-        `SELECT a.id, a.nombre, a.marca_id FROM acuerdos WHERE id = $1`,
+        `SELECT a.id, a.nombre, a.marca_id FROM acuerdos a WHERE a.id = $1`,
         [body.acuerdoId]
       );
 
