@@ -174,9 +174,9 @@ export async function sendEvidenciaAprobacionEmail(
       return false;
     }
 
-    const apiUrl = process.env.API_URL || 'http://localhost:3001';
-    const aprobarUrl = `${apiUrl}/api/evidencias/${evidencia.evidenciaId}/aprobar`;
-    const rechazarUrl = `${apiUrl}/api/evidencias/${evidencia.evidenciaId}/rechazar`;
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
+    const aprobarUrl = `${backendUrl}/api/evidencias/${evidencia.evidenciaId}/aprobar`;
+    const rechazarUrl = `${backendUrl}/api/evidencias/${evidencia.evidenciaId}/rechazar`;
 
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;">

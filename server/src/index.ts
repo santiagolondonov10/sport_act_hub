@@ -3054,6 +3054,62 @@ const server = createServer(async (request, response) => {
     }
   }
 
+  // GET /api/evidencias/:id/aprobar - Approve evidencia (from email link)
+  if (request.method === 'GET' && request.url?.match(/^\/api\/evidencias\/[^/]+\/aprobar/)) {
+    try {
+      const evidenciaId = request.url.split('/')[3];
+
+      const result = await pool.query(
+        `UPDATE evidencias SET estado = 'Aprobada' WHERE id = $1
+         RETURNING id, compromiso_id AS "compromisoId", acuerdo_id AS "acuerdoId", tipo, titulo, descripcion,
+                   TO_CHAR(fecha_ejecucion, 'YYYY-MM-DD') AS "fechaEjecucion", ubicacion_canal AS "ubicacionCanal",
+                   responsable_id AS "responsableId", estado, color_preview AS "colorPreview", archivos, observaciones`,
+        [evidenciaId]
+      );
+
+      if (result.rowCount === 0) {
+        sendJson(response, 404, { error: 'Evidencia no encontrada.' });
+        return;
+      }
+
+      console.log(`✅ Evidencia ${evidenciaId} aprobada desde email`);
+      sendJson(response, 200, { message: 'Evidencia aprobada exitosamente', data: result.rows[0] });
+      return;
+    } catch (error) {
+      console.error('Error approving evidencia from email:', error);
+      sendJson(response, 500, { error: 'No fue posible aprobar la evidencia.' });
+      return;
+    }
+  }
+
+  // GET /api/evidencias/:id/rechazar - Reject evidencia (from email link)
+  if (request.method === 'GET' && request.url?.match(/^\/api\/evidencias\/[^/]+\/rechazar/)) {
+    try {
+      const evidenciaId = request.url.split('/')[3];
+
+      const result = await pool.query(
+        `UPDATE evidencias SET estado = 'Rechazada' WHERE id = $1
+         RETURNING id, compromiso_id AS "compromisoId", acuerdo_id AS "acuerdoId", tipo, titulo, descripcion,
+                   TO_CHAR(fecha_ejecucion, 'YYYY-MM-DD') AS "fechaEjecucion", ubicacion_canal AS "ubicacionCanal",
+                   responsable_id AS "responsableId", estado, color_preview AS "colorPreview", archivos, observaciones`,
+        [evidenciaId]
+      );
+
+      if (result.rowCount === 0) {
+        sendJson(response, 404, { error: 'Evidencia no encontrada.' });
+        return;
+      }
+
+      console.log(`✅ Evidencia ${evidenciaId} rechazada desde email`);
+      sendJson(response, 200, { message: 'Evidencia rechazada exitosamente', data: result.rows[0] });
+      return;
+    } catch (error) {
+      console.error('Error rejecting evidencia from email:', error);
+      sendJson(response, 500, { error: 'No fue posible rechazar la evidencia.' });
+      return;
+    }
+  }
+
   // POST /api/evidencias/:id/aprobar - Approve evidencia
   if (request.method === 'POST' && request.url?.match(/^\/api\/evidencias\/[^/]+\/aprobar/)) {
     try {
