@@ -7,11 +7,18 @@ import { formatFecha } from '@/lib/format';
 import { useClickOutside } from '@/hooks/useClickOutside';
 import { useToast } from '@/hooks/useToast';
 import { useLanguage, type Language } from '@/lib/LanguageContext';
+import { useAdminCompanyCheck } from '@/hooks/useAdminCompanyCheck';
 import { clearSession, getSessionUser } from '@/lib/auth';
 import { AccountSettingsModal } from './AccountSettingsModal';
 
 interface HeaderProps {
   onAbrirMenu: () => void;
+}
+
+interface Compania {
+  id: string;
+  nombre: string;
+  logo_url?: string;
 }
 
 export function Header({ onAbrirMenu }: HeaderProps) {
@@ -20,7 +27,7 @@ export function Header({ onAbrirMenu }: HeaderProps) {
   const seccion = getNavItemForPath(location.pathname);
   const { mostrarToast } = useToast();
   const { language, setLanguage, t } = useLanguage();
-  const sessionUser = getSessionUser();
+  const [sessionUser, setSessionUser] = useState(() => getSessionUser());
 
   const [busqueda, setBusqueda] = useState('');
   const [notificaciones, setNotificaciones] = useState(() =>
@@ -30,21 +37,68 @@ export function Header({ onAbrirMenu }: HeaderProps) {
   const [perfilAbierto, setPerfilAbierto] = useState(false);
   const [temaOscuro, setTemaOscuro] = useState(() => window.localStorage.getItem('sports-act-theme') === 'dark');
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [companiasSelectorAbierto, setCompaniasSelectorAbierto] = useState(false);
+  const [companias, setCompanias] = useState<Compania[]>([]);
 
   const notifRef = useRef<HTMLDivElement>(null);
   const perfilRef = useRef<HTMLDivElement>(null);
+  const companiaRef = useRef<HTMLDivElement>(null);
   useClickOutside(notifRef, () => setNotifAbiertas(false));
   useClickOutside(perfilRef, () => setPerfilAbierto(false));
+  useClickOutside(companiaRef, () => setCompaniasSelectorAbierto(false));
 
   const noLeidas = notificaciones.filter((n) => !n.leida).length;
   const nombreUsuario = sessionUser?.username ?? sessionUser?.email ?? 'Usuario';
   const rolUsuario = `Suscripción ${sessionUser?.subscriptionType ?? 'FREE'}`;
   const inicialesUsuario = nombreUsuario.slice(0, 2).toUpperCase();
+  const { isAdmin, isAdminWithoutCompany } = useAdminCompanyCheck();
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark-mode', temaOscuro);
     window.localStorage.setItem('sports-act-theme', temaOscuro ? 'dark' : 'light');
   }, [temaOscuro]);
+
+  useEffect(() => {
+    if (isAdmin && companiasSelectorAbierto && companias.length === 0) {
+      fetchCompanias();
+    }
+  }, [companiasSelectorAbierto, isAdmin, sessionUser]);
+
+  async function fetchCompanias() {
+    try {
+      const headers = new Headers();
+      if (sessionUser?.email) {
+        headers.set('x-user-id', sessionUser.email);
+      } else if (sessionUser?.username) {
+        headers.set('x-user-id', sessionUser.username);
+      }
+      const response = await fetch('/api/companias', { headers });
+      if (response.ok) {
+        const data = await response.json();
+        setCompanias(data);
+      } else {
+        console.error('Error fetching companias:', response.status);
+      }
+    } catch (error) {
+      console.error('Error fetching companias:', error);
+    }
+  }
+
+  function handleSelectCompania(compania: Compania) {
+    if (sessionUser) {
+      const updatedUser = {
+        ...sessionUser,
+        companiaId: compania.id,
+        companiaNombre: compania.nombre,
+        companiaLogo: compania.logo_url,
+      };
+      setSessionUser(updatedUser);
+      window.localStorage.setItem('sports-act-auth-session', JSON.stringify(updatedUser));
+      setCompaniasSelectorAbierto(false);
+      mostrarToast(`Ahora trabajas con ${compania.nombre}`, 'exito');
+      window.location.reload();
+    }
+  }
 
   function handleLanguageChange(event: React.ChangeEvent<HTMLSelectElement>) {
     const nextLanguage = event.target.value as Language;
@@ -161,12 +215,66 @@ export function Header({ onAbrirMenu }: HeaderProps) {
         {temaOscuro ? <Sun size={17} /> : <Moon size={17} />}
       </button>
 
-      {sessionUser?.companiaLogo && (
+      {isAdmin ? (
+        <div className="relative" ref={companiaRef}>
+          <button
+            type="button"
+            onClick={() => setCompaniasSelectorAbierto((v) => !v)}
+            className={`flex items-center gap-1 rounded-lg border px-2 py-1.5 ${
+              isAdminWithoutCompany
+                ? 'border-danger-300 bg-danger-50 hover:bg-danger-100'
+                : 'border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            {sessionUser?.companiaLogo && (
+              <img src={sessionUser.companiaLogo} alt={sessionUser.companiaNombre || 'Compañía'} className="h-6 w-6 rounded object-cover" />
+            )}
+            <span className={`text-xs font-medium hidden sm:block max-w-32 truncate ${
+              isAdminWithoutCompany ? 'text-danger-700' : 'text-gray-600'
+            }`}>
+              {sessionUser?.companiaNombre || '⚠️ Seleccionar compañía'}
+            </span>
+            <ChevronDown size={14} className={isAdminWithoutCompany ? 'text-danger-600' : 'text-gray-400'} />
+          </button>
+          {companiasSelectorAbierto && (
+            <div className="absolute right-0 mt-2 w-56 rounded-lg border border-gray-200 bg-white shadow-lg max-h-96 overflow-y-auto z-50">
+              <div className="border-b border-gray-100 px-4 py-2">
+                <p className="text-sm font-semibold text-gray-900">Seleccionar Compañía</p>
+              </div>
+              <ul>
+                {companias.length === 0 ? (
+                  <li className="px-4 py-3 text-center text-xs text-gray-500">Cargando compañías...</li>
+                ) : (
+                  companias.map((compania) => (
+                    <li key={compania.id}>
+                      <button
+                        type="button"
+                        onClick={() => handleSelectCompania(compania)}
+                        className={`flex w-full items-center gap-2 border-b border-gray-50 px-4 py-3 text-left text-sm last:border-0 hover:bg-gray-50 ${
+                          sessionUser?.companiaId === compania.id ? 'bg-brand-50' : ''
+                        }`}
+                      >
+                        {compania.logo_url && (
+                          <img src={compania.logo_url} alt={compania.nombre} className="h-6 w-6 rounded object-cover flex-shrink-0" />
+                        )}
+                        <span className="flex-1 truncate">{compania.nombre}</span>
+                        {sessionUser?.companiaId === compania.id && (
+                          <span className="text-brand-800 font-medium">✓</span>
+                        )}
+                      </button>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>
+          )}
+        </div>
+      ) : sessionUser?.companiaLogo ? (
         <div className="flex items-center gap-1 rounded-lg border border-gray-200 px-2 py-1.5">
           <img src={sessionUser.companiaLogo} alt={sessionUser.companiaNombre || 'Compañía'} className="h-6 w-6 rounded object-cover" title={sessionUser.companiaNombre || undefined} />
           <span className="text-xs font-medium text-gray-600 hidden sm:block max-w-32 truncate">{sessionUser.companiaNombre}</span>
         </div>
-      )}
+      ) : null}
 
       <div className="relative" ref={perfilRef}>
         <button

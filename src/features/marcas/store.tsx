@@ -56,6 +56,15 @@ export function MarcasProvider({ children }: { children: ReactNode }) {
           return;
         }
 
+        // Si es ADMIN sin compañía, no hacer búsquedas
+        const isAdmin = user.subscriptionType === 'ADMIN';
+        const hasCompany = Boolean(user.companiaId);
+        if (isAdmin && !hasCompany) {
+          setMarcas([]);
+          setLoading(false);
+          return;
+        }
+
         setLoading(true);
         const headers = new Headers();
         const auth = authHeaders();
@@ -88,7 +97,7 @@ export function MarcasProvider({ children }: { children: ReactNode }) {
 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, [getSessionUser()?.id]);
+  }, [getSessionUser()?.id, getSessionUser()?.companiaId]);
 
   async function crearMarca(nuevo: Omit<Marca, 'id' | 'creadoPor' | 'actualizadoPor' | 'createdAt' | 'updatedAt'>) {
     const headers = new Headers();

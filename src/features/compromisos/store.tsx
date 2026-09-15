@@ -37,6 +37,15 @@ export function CompromisosProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      // Si es ADMIN sin compañía, no hacer búsquedas
+      const isAdmin = user.subscriptionType === 'ADMIN';
+      const hasCompany = Boolean(user.companiaId);
+      if (isAdmin && !hasCompany) {
+        setCompromisos([]);
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       const headers = new Headers();
       const auth = authHeaders();
@@ -65,7 +74,7 @@ export function CompromisosProvider({ children }: { children: ReactNode }) {
     };
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, [getSessionUser()?.id]);
+  }, [getSessionUser()?.id, getSessionUser()?.companiaId]);
 
   async function crearCompromiso(nuevo: Omit<Compromiso, 'id'>): Promise<Compromiso> {
     const headers = new Headers();

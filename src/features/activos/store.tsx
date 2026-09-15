@@ -27,6 +27,16 @@ export function ActivosProvider({ children }: { children: ReactNode }) {
           setLoading(false);
           return;
         }
+
+        // Si es ADMIN sin compañía, no hacer búsquedas
+        const isAdmin = user.subscriptionType === 'ADMIN';
+        const hasCompany = Boolean(user.companiaId);
+        if (isAdmin && !hasCompany) {
+          setActivos([]);
+          setLoading(false);
+          return;
+        }
+
         const headers = new Headers();
         const auth = authHeaders();
         Object.entries(auth).forEach(([key, value]) => {
@@ -45,7 +55,7 @@ export function ActivosProvider({ children }: { children: ReactNode }) {
       }
     };
     cargarActivos();
-  }, [getSessionUser()?.id]);
+  }, [getSessionUser()?.id, getSessionUser()?.companiaId]);
 
   async function crearActivo(nuevo: any) {
     const headers = new Headers();

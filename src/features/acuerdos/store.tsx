@@ -27,6 +27,15 @@ export function AcuerdosProvider({ children }: { children: ReactNode }) {
           return;
         }
 
+        // Si es ADMIN sin compañía, no hacer búsquedas
+        const isAdmin = user.subscriptionType === 'ADMIN';
+        const hasCompany = Boolean(user.companiaId);
+        if (isAdmin && !hasCompany) {
+          setAcuerdos([]);
+          setLoading(false);
+          return;
+        }
+
         setLoading(true);
         const headers = new Headers();
         const auth = authHeaders();
@@ -49,7 +58,7 @@ export function AcuerdosProvider({ children }: { children: ReactNode }) {
     };
 
     cargarAcuerdos();
-  }, [getSessionUser()?.id]);
+  }, [getSessionUser()?.id, getSessionUser()?.companiaId]);
 
   async function recargarAcuerdos() {
     try {

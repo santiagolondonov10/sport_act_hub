@@ -108,7 +108,12 @@ async function parseMultipartFormData(request: import('node:http').IncomingMessa
   return { fields, files };
 }
 
-async function getUserCompaniaId(userId: string): Promise<string | null> {
+async function getUserCompaniaId(userId: string, overrideCompaniaId?: string): Promise<string | null> {
+  // Si hay un override (ej: admin seleccionó una compañía), usarlo
+  if (overrideCompaniaId) {
+    return overrideCompaniaId;
+  }
+
   // Try to parse as UUID first, then fall back to email/username
   const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
 
@@ -126,6 +131,10 @@ async function getUserCompaniaId(userId: string): Promise<string | null> {
   }
 
   return result.rows[0]?.compania_id ?? null;
+}
+
+function getCompaniaIdFromRequest(request: any): string | undefined {
+  return request.headers['x-compania-id'];
 }
 
 async function ensureAcuerdoAlertaFields() {
@@ -637,6 +646,46 @@ const server = createServer(async (request, response) => {
     return;
   }
 
+  // GET /api/companias - Get all companies (for ADMIN users)
+  if (request.method === 'GET' && request.url === '/api/companias') {
+    try {
+      const userId = request.headers['x-user-id'];
+      if (!userId) {
+        sendJson(response, 401, { error: 'Se requiere autenticación.' });
+        return;
+      }
+
+      // Get user to check if admin
+      const userResult = await pool.query<{ subscription_type: string }>(
+        `SELECT subscription_type FROM auth_credentials
+         WHERE (LOWER(email) = LOWER($1) OR LOWER(username) = LOWER($1))
+         AND NOW() >= valid_from AND NOW() < valid_until
+         LIMIT 1`,
+        [userId],
+      );
+
+      if (userResult.rows.length === 0) {
+        sendJson(response, 401, { error: 'Usuario no encontrado.' });
+        return;
+      }
+
+      if (userResult.rows[0].subscription_type !== 'ADMIN') {
+        sendJson(response, 403, { error: 'Solo administradores pueden acceder a este recurso.' });
+        return;
+      }
+
+      const result = await pool.query<{ id: string; nombre: string; logo_url?: string | null }>(
+        `SELECT id, nombre, logo_url FROM companias ORDER BY nombre`,
+      );
+
+      sendJson(response, 200, result.rows);
+    } catch (error) {
+      console.error('Error getting companias:', error);
+      sendJson(response, 500, { error: 'No fue posible obtener las compañías.' });
+    }
+    return;
+  }
+
   if (request.url?.startsWith('/api/admin/')) {
     try {
       const companyMatch = request.url?.match(/^\/api\/admin\/companias\/([^/]+)$/);
@@ -880,14 +929,18 @@ const server = createServer(async (request, response) => {
          LEFT JOIN activo_fotos af ON a.id = af.activo_id`;
       let params: any[] = [];
 
-      if (!isAdmin) {
-        const companiaId = await getUserCompaniaId(userId);
-        if (!companiaId) {
-          sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
-          return;
-        }
+      // Obtener companiaId (override si ADMIN seleccionó, o del usuario)
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
+
+      // Filtrar por compañía si está disponible (admin con compañía seleccionada o usuario regular)
+      if (companiaId) {
         query += ' WHERE a.compania_id = $1';
         params = [companiaId];
+      } else if (!isAdmin) {
+        // Usuario regular sin compañía asignada
+        sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
+        return;
       }
 
       query += ' GROUP BY a.id, ac.nombre, a.canal, a.descripcion, a.categoria_id, a.valoracion_cop, a.inventario_total, a.inventario_disponible, a.alcance_estimado, a.estado, a.derechos_incluidos, a.imagen_color, a.documentos_adjuntos, a.created_at, a.updated_at ORDER BY a.created_at DESC';
@@ -909,7 +962,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
@@ -1002,7 +1056,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
@@ -1049,7 +1104,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
@@ -1203,7 +1259,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
@@ -1229,7 +1286,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
@@ -1317,7 +1375,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
@@ -1351,7 +1410,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
@@ -1414,7 +1474,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
@@ -1476,7 +1537,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
@@ -1664,7 +1726,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
@@ -1698,7 +1761,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
@@ -1759,7 +1823,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
@@ -1909,7 +1974,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
@@ -1935,7 +2001,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
@@ -1974,7 +2041,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
@@ -2008,7 +2076,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
@@ -2109,7 +2178,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
@@ -2153,7 +2223,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
@@ -2330,7 +2401,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
@@ -2364,7 +2436,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
@@ -2406,7 +2479,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
@@ -2444,7 +2518,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
@@ -2487,7 +2562,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
@@ -2579,7 +2655,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
@@ -2605,7 +2682,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
@@ -2654,7 +2732,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
@@ -2685,7 +2764,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
@@ -2785,7 +2865,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
@@ -2863,7 +2944,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
@@ -2896,7 +2978,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         console.log('No compania ID for user:', userId);
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
@@ -2970,7 +3053,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
@@ -3558,7 +3642,8 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
@@ -3738,7 +3823,8 @@ Responde a la siguiente pregunta en español de forma clara y concisa:
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
         return;
       }
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
@@ -3905,7 +3991,8 @@ Responde a la siguiente pregunta en español de forma clara y concisa:
         return;
       }
 
-      const companiaId = await getUserCompaniaId(userId);
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
       if (!companiaId) {
         sendJson(response, 401, { error: 'No autorizado' });
         return;

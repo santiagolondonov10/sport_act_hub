@@ -19,7 +19,14 @@ const SESSION_KEY = 'sports-act-auth-session';
 
 export function authHeaders() {
   const user = getSessionUser();
-  return user ? { 'x-user-id': user.email || user.username || '' } : {};
+  const headers: Record<string, string> = {};
+  if (user) {
+    headers['x-user-id'] = user.email || user.username || '';
+    if (user.companiaId) {
+      headers['x-compania-id'] = user.companiaId;
+    }
+  }
+  return headers;
 }
 
 export function hasSession() {

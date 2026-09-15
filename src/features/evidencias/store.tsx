@@ -26,6 +26,15 @@ export function EvidenciasProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      // Si es ADMIN sin compañía, no hacer búsquedas
+      const isAdmin = user.subscriptionType === 'ADMIN';
+      const hasCompany = Boolean(user.companiaId);
+      if (isAdmin && !hasCompany) {
+        setEvidencias([]);
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       const headers = new Headers();
       const auth = authHeaders();
@@ -49,7 +58,7 @@ export function EvidenciasProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     recargarEvidencias();
-  }, [getSessionUser()?.id]);
+  }, [getSessionUser()?.id, getSessionUser()?.companiaId]);
 
   async function crearEvidencia(nueva: Omit<Evidencia, 'id' | 'estado'> & { archivos?: Array<{ nombre: string; tipo: string; datos: string }> }): Promise<Evidencia> {
     const headers = new Headers();

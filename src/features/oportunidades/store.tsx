@@ -30,6 +30,15 @@ export function OportunidadesProvider({ children }: { children: ReactNode }) {
           return;
         }
 
+        // Si es ADMIN sin compañía, no hacer búsquedas
+        const isAdmin = user.subscriptionType === 'ADMIN';
+        const hasCompany = Boolean(user.companiaId);
+        if (isAdmin && !hasCompany) {
+          setOportunidades([]);
+          setLoading(false);
+          return;
+        }
+
         setLoading(true);
         const headers = new Headers();
         const auth = authHeaders();
@@ -56,7 +65,7 @@ export function OportunidadesProvider({ children }: { children: ReactNode }) {
     };
 
     cargarOportunidades();
-  }, [getSessionUser()?.id]);
+  }, [getSessionUser()?.id, getSessionUser()?.companiaId]);
 
   async function crearOportunidad(nueva: Omit<Oportunidad, 'id' | 'fechaCreacion' | 'actividad'>) {
     const headers = new Headers();
