@@ -3054,58 +3054,344 @@ const server = createServer(async (request, response) => {
     }
   }
 
-  // GET /api/evidencias/:id/aprobar - Approve evidencia (from email link)
+  // GET /api/evidencias/:id/aprobar - Approve directly (from email link)
   if (request.method === 'GET' && request.url?.match(/^\/api\/evidencias\/[^/]+\/aprobar/)) {
     try {
       const evidenciaId = request.url.split('/')[3];
 
       const result = await pool.query(
         `UPDATE evidencias SET estado = 'Aprobada' WHERE id = $1
-         RETURNING id, compromiso_id AS "compromisoId", acuerdo_id AS "acuerdoId", tipo, titulo, descripcion,
-                   TO_CHAR(fecha_ejecucion, 'YYYY-MM-DD') AS "fechaEjecucion", ubicacion_canal AS "ubicacionCanal",
-                   responsable_id AS "responsableId", estado, color_preview AS "colorPreview", archivos, observaciones`,
+         RETURNING id, titulo, estado`,
         [evidenciaId]
       );
 
       if (result.rowCount === 0) {
-        sendJson(response, 404, { error: 'Evidencia no encontrada.' });
+        response.writeHead(404, { 'Content-Type': 'text/html' });
+        response.end('<h1>Evidencia no encontrada</h1>');
         return;
       }
 
       console.log(`✅ Evidencia ${evidenciaId} aprobada desde email`);
-      sendJson(response, 200, { message: 'Evidencia aprobada exitosamente', data: result.rows[0] });
+
+      // Show success page
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Evidencia Aprobada</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+              background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+              min-height: 100vh;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              padding: 20px;
+            }
+            .container {
+              background: white;
+              border-radius: 12px;
+              box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+              max-width: 600px;
+              width: 100%;
+              padding: 60px 40px;
+              text-align: center;
+            }
+            .icon {
+              font-size: 64px;
+              margin-bottom: 20px;
+            }
+            h1 {
+              color: #12a150;
+              margin-bottom: 10px;
+              font-size: 32px;
+            }
+            p {
+              color: #666;
+              font-size: 16px;
+              line-height: 1.6;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="icon">✅</div>
+            <h1>Evidencia Aprobada</h1>
+            <p>La solicitud ha sido procesada correctamente.</p>
+          </div>
+        </body>
+        </html>
+      `;
+
+      response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      response.end(htmlContent);
       return;
     } catch (error) {
-      console.error('Error approving evidencia from email:', error);
-      sendJson(response, 500, { error: 'No fue posible aprobar la evidencia.' });
+      console.error('Error in approval flow:', error);
+      response.writeHead(500, { 'Content-Type': 'text/html' });
+      response.end('<h1>Error</h1><p>Algo salió mal</p>');
       return;
     }
   }
 
-  // GET /api/evidencias/:id/rechazar - Reject evidencia (from email link)
+  // GET /api/evidencias/:id/rechazar - Show rejection form (from email link)
   if (request.method === 'GET' && request.url?.match(/^\/api\/evidencias\/[^/]+\/rechazar/)) {
     try {
       const evidenciaId = request.url.split('/')[3];
 
-      const result = await pool.query(
-        `UPDATE evidencias SET estado = 'Rechazada' WHERE id = $1
-         RETURNING id, compromiso_id AS "compromisoId", acuerdo_id AS "acuerdoId", tipo, titulo, descripcion,
-                   TO_CHAR(fecha_ejecucion, 'YYYY-MM-DD') AS "fechaEjecucion", ubicacion_canal AS "ubicacionCanal",
-                   responsable_id AS "responsableId", estado, color_preview AS "colorPreview", archivos, observaciones`,
+      // Serve HTML form for rejection
+      const evidenciaResult = await pool.query(
+        `SELECT id, titulo, descripcion, tipo FROM evidencias WHERE id = $1`,
         [evidenciaId]
       );
 
-      if (result.rowCount === 0) {
-        sendJson(response, 404, { error: 'Evidencia no encontrada.' });
+      if (evidenciaResult.rows.length === 0) {
+        response.writeHead(404, { 'Content-Type': 'text/html' });
+        response.end('<h1>Evidencia no encontrada</h1>');
         return;
       }
 
-      console.log(`✅ Evidencia ${evidenciaId} rechazada desde email`);
-      sendJson(response, 200, { message: 'Evidencia rechazada exitosamente', data: result.rows[0] });
+      const evidencia = evidenciaResult.rows[0];
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Rechazo de Evidencia</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+              background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+              min-height: 100vh;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              padding: 20px;
+            }
+            .container {
+              background: white;
+              border-radius: 12px;
+              box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+              max-width: 600px;
+              width: 100%;
+              padding: 40px;
+            }
+            h1 {
+              color: #333;
+              margin-bottom: 10px;
+              font-size: 28px;
+            }
+            .subtitle {
+              color: #666;
+              margin-bottom: 30px;
+              font-size: 14px;
+            }
+            .info-box {
+              background: #f9f9f9;
+              border-left: 4px solid #dc2626;
+              padding: 15px;
+              margin-bottom: 30px;
+              border-radius: 6px;
+            }
+            .info-label {
+              color: #666;
+              font-size: 12px;
+              text-transform: uppercase;
+              margin-bottom: 5px;
+            }
+            .info-value {
+              color: #333;
+              font-weight: 600;
+              margin-bottom: 10px;
+            }
+            textarea {
+              width: 100%;
+              padding: 12px;
+              border: 1px solid #ddd;
+              border-radius: 6px;
+              font-family: inherit;
+              font-size: 14px;
+              resize: vertical;
+              min-height: 120px;
+              margin-bottom: 20px;
+            }
+            textarea:focus {
+              outline: none;
+              border-color: #dc2626;
+              box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+            }
+            .buttons {
+              display: flex;
+              gap: 10px;
+            }
+            button {
+              flex: 1;
+              padding: 12px 20px;
+              border: none;
+              border-radius: 6px;
+              font-weight: 600;
+              cursor: pointer;
+              font-size: 14px;
+              transition: all 0.3s;
+            }
+            .btn-approve {
+              background: #12a150;
+              color: white;
+            }
+            .btn-approve:hover {
+              background: #0d8a3e;
+              transform: translateY(-1px);
+              box-shadow: 0 4px 12px rgba(18, 161, 80, 0.3);
+            }
+            .btn-reject {
+              background: #dc2626;
+              color: white;
+            }
+            .btn-reject:hover {
+              background: #b91c1c;
+              transform: translateY(-1px);
+              box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+            }
+            .loading {
+              display: none;
+              text-align: center;
+              color: #666;
+            }
+            .spinner {
+              display: inline-block;
+              width: 16px;
+              height: 16px;
+              border: 2px solid #f3f3f3;
+              border-top: 2px solid #dc2626;
+              border-radius: 50%;
+              animation: spin 1s linear infinite;
+              margin-right: 8px;
+            }
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>📋 Rechazar Evidencia</h1>
+            <p class="subtitle">Por favor, especifica las razones del rechazo</p>
+
+            <div class="info-box">
+              <div class="info-label">Título</div>
+              <div class="info-value">${evidencia.titulo}</div>
+              <div class="info-label">Tipo</div>
+              <div class="info-value">${evidencia.tipo}</div>
+              ${evidencia.descripcion ? `
+                <div class="info-label">Descripción</div>
+                <div class="info-value">${evidencia.descripcion}</div>
+              ` : ''}
+            </div>
+
+            <form id="rejectionForm">
+              <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">
+                Razones del Rechazo (requerido)
+              </label>
+              <textarea
+                id="observaciones"
+                name="observaciones"
+                placeholder="Explica las razones del rechazo..."
+                required
+              ></textarea>
+
+              <div class="buttons">
+                <button type="button" class="btn-reject" onclick="handleReject()" style="flex: 1;">
+                  ✗ Rechazar
+                </button>
+              </div>
+            </form>
+
+            <div class="loading" id="loading">
+              <div class="spinner"></div>
+              <span>Procesando...</span>
+            </div>
+          </div>
+
+          <script>
+            const evidenciaId = '${evidenciaId}';
+
+            async function handleReject() {
+              const observaciones = document.getElementById('observaciones').value;
+              if (!observaciones.trim()) {
+                alert('Por favor, especifica las razones del rechazo');
+                return;
+              }
+              await submitForm('rechazar');
+            }
+
+            async function submitForm(action) {
+              const observaciones = document.getElementById('observaciones').value;
+              const loading = document.getElementById('loading');
+              const buttons = document.querySelectorAll('button');
+
+              buttons.forEach(btn => btn.disabled = true);
+              loading.style.display = 'block';
+
+              try {
+                const response = await fetch(\`/api/evidencias/\${evidenciaId}/\${action}\`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ observaciones })
+                });
+
+                if (response.ok) {
+                  showSuccess(action);
+                } else {
+                  showError('No fue posible procesar la solicitud');
+                }
+              } catch (error) {
+                showError('Error de conexión');
+              }
+            }
+
+            function showSuccess(action) {
+              const container = document.querySelector('.container');
+              container.innerHTML = \`
+                <div style="text-align: center; padding: 40px 20px;">
+                  <div style="font-size: 48px; margin-bottom: 20px;">
+                    \${action === 'aprobar' ? '✅' : '❌'}
+                  </div>
+                  <h2 style="color: #333; margin-bottom: 10px;">
+                    \${action === 'aprobar' ? 'Evidencia Aprobada' : 'Evidencia Rechazada'}
+                  </h2>
+                  <p style="color: #666; margin-bottom: 20px;">
+                    La solicitud ha sido procesada correctamente.
+                  </p>
+                </div>
+              \`;
+            }
+
+            function showError(message) {
+              const loading = document.getElementById('loading');
+              const buttons = document.querySelectorAll('button');
+              loading.style.display = 'none';
+              buttons.forEach(btn => btn.disabled = false);
+              alert(message);
+            }
+          </script>
+        </body>
+        </html>
+      `;
+
+      response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      response.end(htmlContent);
       return;
     } catch (error) {
-      console.error('Error rejecting evidencia from email:', error);
-      sendJson(response, 500, { error: 'No fue posible rechazar la evidencia.' });
+      console.error('Error in rejection flow:', error);
+      response.writeHead(500, { 'Content-Type': 'text/html' });
+      response.end('<h1>Error</h1><p>Algo salió mal</p>');
       return;
     }
   }
