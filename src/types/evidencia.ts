@@ -42,6 +42,7 @@ export interface Evidencia {
   estado: EstadoEvidencia;
   colorPreview: string;
   activoId?: string;
+  observaciones?: string;
   archivos?: Array<{
     nombre: string;
     tipo: string;

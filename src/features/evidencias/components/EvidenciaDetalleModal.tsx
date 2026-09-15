@@ -84,7 +84,17 @@ export function EvidenciaDetalleModal({ evidencia, onCerrar, onEditar }: Evidenc
           </div>
           <div className="col-span-2">
             <p className="text-xs text-gray-500">Compromiso</p>
-            <p className="font-medium text-gray-900">{compromiso?.entregable || '-'}</p>
+            {compromiso ? (
+              <Link to={`/compromisos/${compromiso.id}`} className="font-medium text-brand-800 hover:underline">
+                {compromiso.entregable}
+              </Link>
+            ) : (
+              <p className="font-medium text-gray-900">-</p>
+            )}
+          </div>
+          <div className="col-span-2">
+            <p className="text-xs text-gray-500">Observaciones</p>
+            <p className="font-medium text-gray-900 whitespace-pre-wrap">{evidencia.observaciones || '-'}</p>
           </div>
         </div>
 

@@ -10,9 +10,11 @@ import {
   MousePointerClick,
   Share2,
   TrendingUp,
+  Send,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
 import { formatFecha } from '@/lib/format';
 import { useAcuerdos } from '@/features/acuerdos/store';
 import { useMarcas } from '@/features/marcas/store';
@@ -38,9 +40,10 @@ const TIPOS_IMAGEN = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 interface EvidenciaCardProps {
   evidencia: Evidencia;
   onSeleccionar: () => void;
+  onSolicitarRevision?: () => void;
 }
 
-export function EvidenciaCard({ evidencia, onSeleccionar }: EvidenciaCardProps) {
+export function EvidenciaCard({ evidencia, onSeleccionar, onSolicitarRevision }: EvidenciaCardProps) {
   const { acuerdos } = useAcuerdos();
   const { marcas } = useMarcas();
 
@@ -80,6 +83,19 @@ export function EvidenciaCard({ evidencia, onSeleccionar }: EvidenciaCardProps) 
         <p className="mt-auto pt-2 text-xs text-gray-400">
           {evidencia.tipo} · {formatFecha(evidencia.fechaEjecucion)}
         </p>
+        {evidencia.estado === 'En revisión' && onSolicitarRevision && (
+          <Button
+            variante="primario"
+            icono={<Send size={12} />}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSolicitarRevision();
+            }}
+            className="mt-2 w-full text-xs"
+          >
+            Solicitar revisión
+          </Button>
+        )}
       </div>
     </button>
   );

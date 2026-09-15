@@ -160,3 +160,99 @@ export async function sendAcuerdoProximoAVencerEmail(
     return false;
   }
 }
+
+export async function sendEvidenciaAprobacionEmail(
+  marca: { nombre: string; contacto: { email: string } },
+  evidencia: { titulo: string; descripcion: string; tipo: string; acuerdoNombre: string; evidenciaId: string },
+  archivos?: Array<{ nombre: string; tipo: string }>
+) {
+  try {
+    const destinatario = marca.contacto.email;
+
+    if (!destinatario) {
+      console.error('❌ Email del destinatario vacío');
+      return false;
+    }
+
+    const apiUrl = process.env.API_URL || 'http://localhost:5173';
+    const aprobarUrl = `${apiUrl}/api/evidencias/${evidencia.evidenciaId}/aprobar`;
+    const rechazarUrl = `${apiUrl}/api/evidencias/${evidencia.evidenciaId}/rechazar`;
+
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;">
+        <div style="background-color: white; border-radius: 8px; padding: 30px; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333; border-bottom: 2px solid #0066cc; padding-bottom: 10px;">
+            📋 Nueva Evidencia para Aprobación
+          </h2>
+          <p style="color: #666; font-size: 14px; line-height: 1.6;">
+            Estimados,<br/><br/>
+            Hemos recibido una nueva evidencia que requiere su aprobación o rechazo.
+          </p>
+
+          <div style="background-color: #f9f9f9; border-left: 4px solid #0066cc; padding: 15px; margin: 20px 0;">
+            <p style="margin: 5px 0;"><strong>Acuerdo:</strong> ${evidencia.acuerdoNombre}</p>
+            <p style="margin: 5px 0;"><strong>Evidencia:</strong> ${evidencia.titulo}</p>
+            <p style="margin: 5px 0;"><strong>Tipo:</strong> ${evidencia.tipo}</p>
+            ${evidencia.descripcion ? `<p style="margin: 5px 0;"><strong>Descripción:</strong> ${evidencia.descripcion}</p>` : ''}
+          </div>
+
+          ${archivos && archivos.length > 0 ? `
+            <div style="margin: 20px 0;">
+              <p style="color: #333; font-weight: bold; margin-bottom: 10px;">Archivos adjuntos:</p>
+              <ul style="list-style: none; padding: 0; margin: 0;">
+                ${archivos.map((a) => `<li style="padding: 5px 0; color: #666;">📎 ${a.nombre}</li>`).join('')}
+              </ul>
+            </div>
+          ` : ''}
+
+          <div style="margin: 30px 0; padding: 20px; background-color: #f0f7ff; border-radius: 8px;">
+            <p style="color: #333; font-weight: bold; margin-bottom: 15px;">Por favor, indique si aprueba o rechaza esta evidencia:</p>
+            <div style="display: flex; gap: 10px;">
+              <a href="${aprobarUrl}?action=aprobar" style="flex: 1; padding: 12px 20px; background-color: #12a150; color: white; text-align: center; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
+                ✓ Aprobar
+              </a>
+              <a href="${rechazarUrl}?action=rechazar" style="flex: 1; padding: 12px 20px; background-color: #dc2626; color: white; text-align: center; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
+                ✗ Rechazar
+              </a>
+            </div>
+            <p style="color: #666; font-size: 12px; margin-top: 15px; text-align: center;">
+              Si rechaza esta evidencia, por favor agregue una observación en el sistema.
+            </p>
+          </div>
+
+          <p style="color: #999; font-size: 12px; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 20px;">
+            Sports Act Hub<br/>
+            info@sportsact.co
+          </p>
+        </div>
+      </div>
+    `;
+
+    const transporter = nodemailer.createTransport({
+      host: process.env.EMAIL_HOST,
+      port: Number(process.env.EMAIL_PORT || 587),
+      secure: false,
+      requireTLS: true,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD,
+      },
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || 'info@sportsact.co',
+      to: destinatario,
+      subject: `Aprobación de Evidencia - ${evidencia.titulo}`,
+      html: htmlContent,
+    };
+
+    console.log(`📧 Enviando solicitud de aprobación de evidencia a ${destinatario}`);
+    const result = await transporter.sendMail(mailOptions);
+
+    console.log(`✅ Email de aprobación enviado exitosamente a ${destinatario}`);
+    return true;
+  } catch (error) {
+    console.error('❌ Error enviando email de aprobación:', error);
+    return false;
+  }
+}

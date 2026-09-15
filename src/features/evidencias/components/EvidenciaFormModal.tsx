@@ -27,6 +27,7 @@ export function EvidenciaFormModal({ abierto, onCerrar, onGuardar, evidenciaInic
   const [descripcion, setDescripcion] = useState('');
   const [fechaEjecucion, setFechaEjecucion] = useState('');
   const [ubicacionCanal, setUbicacionCanal] = useState('');
+  const [observaciones, setObservaciones] = useState('');
   const [archivos, setArchivos] = useState<File[]>([]);
   const [archivosExistentes, setArchivosExistentes] = useState<Array<{ nombre: string; tipo: string; datos: string }>>([]);
 
@@ -38,6 +39,7 @@ export function EvidenciaFormModal({ abierto, onCerrar, onGuardar, evidenciaInic
       setDescripcion(evidenciaInicial.descripcion);
       setFechaEjecucion(evidenciaInicial.fechaEjecucion);
       setUbicacionCanal(evidenciaInicial.ubicacionCanal);
+      setObservaciones(evidenciaInicial.observaciones || '');
       setArchivos([]);
       setArchivosExistentes(evidenciaInicial.archivos || []);
     } else if (abierto) {
@@ -47,6 +49,7 @@ export function EvidenciaFormModal({ abierto, onCerrar, onGuardar, evidenciaInic
       setDescripcion('');
       setFechaEjecucion('');
       setUbicacionCanal('');
+      setObservaciones('');
       setArchivos([]);
       setArchivosExistentes([]);
     }
@@ -100,6 +103,7 @@ export function EvidenciaFormModal({ abierto, onCerrar, onGuardar, evidenciaInic
       descripcion,
       fechaEjecucion,
       ubicacionCanal,
+      observaciones: observaciones || undefined,
       responsableId: compromiso.responsableId,
       colorPreview: evidenciaInicial?.colorPreview || COLORES[Math.floor(Math.random() * COLORES.length)],
       archivos: todosLosArchivos,

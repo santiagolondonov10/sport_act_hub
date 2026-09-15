@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { CheckCircle2, Clock, FolderCheck, KanbanSquare, List, Plus, XCircle } from 'lucide-react';
+import { CheckCircle2, Clock, FolderCheck, KanbanSquare, List, Plus, XCircle, Mail } from 'lucide-react';
+import { authHeaders } from '@/lib/auth';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { StatCard } from '@/components/shared/StatCard';
 import { SearchInput } from '@/components/shared/SearchInput';
@@ -90,6 +91,31 @@ export function EvidenciasPage() {
     cambiarEstado(id, nuevoEstado);
     mostrarToast(nuevoEstado === 'Aprobada' ? t('message.evidenciaAprobada') : t('message.evidenciaRechazada'), nuevoEstado === 'Aprobada' ? 'exito' : 'error');
     setSeleccionada(null);
+  }
+
+  async function handleSolicitarRevision(evidenciaId: string) {
+    if (!confirm('¿Deseas enviar una solicitud de revisión a la marca?')) return;
+
+    try {
+      const headers = new Headers();
+      headers.set('Content-Type', 'application/json');
+      Object.entries(authHeaders()).forEach(([key, value]) => {
+        if (value) headers.set(key, value);
+      });
+
+      const response = await fetch(`/api/evidencias/${evidenciaId}/solicitar-revision`, {
+        method: 'POST',
+        headers,
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al enviar la solicitud de revisión');
+      }
+
+      mostrarToast('Solicitud de revisión enviada correctamente.');
+    } catch (error) {
+      mostrarToast(error instanceof Error ? error.message : 'Error al enviar la solicitud.', 'error');
+    }
   }
 
   return (
@@ -182,7 +208,12 @@ export function EvidenciasPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filtradas.map((evidencia) => (
-            <EvidenciaCard key={evidencia.id} evidencia={evidencia} onSeleccionar={() => setSeleccionada(evidencia)} />
+            <EvidenciaCard
+              key={evidencia.id}
+              evidencia={evidencia}
+              onSeleccionar={() => setSeleccionada(evidencia)}
+              onSolicitarRevision={() => handleSolicitarRevision(evidencia.id)}
+            />
           ))}
         </div>
       )}

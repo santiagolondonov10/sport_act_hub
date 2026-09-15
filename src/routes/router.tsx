@@ -10,6 +10,7 @@ import { OportunidadDetallePage } from '@/features/oportunidades/pages/Oportunid
 import { AcuerdosListPage } from '@/features/acuerdos/pages/AcuerdosListPage';
 import { AcuerdoDetallePage } from '@/features/acuerdos/pages/AcuerdoDetallePage';
 import { CompromisosPage } from '@/features/compromisos/pages/CompromisosPage';
+import { CompromisosDetallePage } from '@/features/compromisos/pages/CompromisosDetallePage';
 import { EvidenciasPage } from '@/features/evidencias/pages/EvidenciasPage';
 import { ReportesListPage } from '@/features/reportes/pages/ReportesListPage';
 import { ReporteDetallePage } from '@/features/reportes/pages/ReporteDetallePage';
@@ -42,6 +43,7 @@ export const router = createBrowserRouter([
       { path: '/acuerdos', element: <AcuerdosListPage /> },
       { path: '/acuerdos/:acuerdoId', element: <AcuerdoDetallePage /> },
       { path: '/compromisos', element: <CompromisosPage /> },
+      { path: '/compromisos/:id', element: <CompromisosDetallePage /> },
       { path: '/evidencias', element: <EvidenciasPage /> },
       { path: '/reportes', element: <ReportesListPage /> },
       { path: '/reportes/:acuerdoId', element: <ReporteDetallePage /> },

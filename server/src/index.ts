@@ -8,7 +8,7 @@ import { config } from 'dotenv';
 import * as XLSX from 'xlsx';
 import cron from 'node-cron';
 import { pool } from './db.js';
-import { sendOportunidadStatusEmail, sendAcuerdoProximoAVencerEmail } from './emailService.js';
+import { sendOportunidadStatusEmail, sendAcuerdoProximoAVencerEmail, sendEvidenciaAprobacionEmail } from './emailService.js';
 
 // Load environment variables from .env file
 config();
@@ -156,6 +156,28 @@ async function ensureAcuerdoAlertaFields() {
     }
   } catch (error) {
     console.error('❌ Error ensurando campos de alertas:', error);
+  }
+}
+
+async function ensureEvidenciaFields() {
+  try {
+    // Verificar si existe el campo observaciones, si no, crearlo
+    try {
+      await pool.query(`
+        ALTER TABLE evidencias
+        ADD COLUMN observaciones text
+      `);
+      console.log(`✅ Campo observaciones creado en tabla evidencias`);
+    } catch (error: any) {
+      if (error.code === '42701') {
+        // Columna ya existe
+        console.log(`✅ Campo observaciones ya existe en tabla evidencias`);
+      } else {
+        throw error;
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error ensurando campos de evidencias:', error);
   }
 }
 
@@ -2180,8 +2202,8 @@ const server = createServer(async (request, response) => {
         return;
       }
 
-      // Send email notification if etapa changed
-      if (etapaChanged && body.etapa) {
+      // Send email notification only if etapa changed to "Firmada"
+      if (etapaChanged && body.etapa === 'Firmada') {
         const oportunidadFull = await pool.query(
           `SELECT id, marca_id, responsable_id, valor_estimado_cop FROM oportunidades WHERE id = $1 AND compania_id = $2`,
           [oportunidadId, companiaId]
@@ -2789,7 +2811,7 @@ const server = createServer(async (request, response) => {
       const result = await pool.query(
         `SELECT id, compromiso_id AS "compromisoId", acuerdo_id AS "acuerdoId", tipo, titulo, descripcion,
                 TO_CHAR(fecha_ejecucion, 'YYYY-MM-DD') AS "fechaEjecucion", ubicacion_canal AS "ubicacionCanal",
-                responsable_id AS "responsableId", estado, color_preview AS "colorPreview", archivos
+                responsable_id AS "responsableId", estado, color_preview AS "colorPreview", archivos, observaciones
          FROM evidencias WHERE compania_id = $1 ORDER BY fecha_ejecucion DESC`,
         [companiaId]
       );
@@ -2827,16 +2849,49 @@ const server = createServer(async (request, response) => {
 
       console.log('Inserting evidencia with ID:', evidenciaId);
       const result = await pool.query(
-        `INSERT INTO evidencias (id, compromiso_id, acuerdo_id, tipo, titulo, descripcion, fecha_ejecucion, ubicacion_canal, responsable_id, compania_id, archivos, estado, color_preview)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::uuid, $11, $12, $13)
+        `INSERT INTO evidencias (id, compromiso_id, acuerdo_id, tipo, titulo, descripcion, fecha_ejecucion, ubicacion_canal, responsable_id, compania_id, archivos, estado, color_preview, observaciones)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::uuid, $11, $12, $13, $14)
          RETURNING id, compromiso_id AS "compromisoId", acuerdo_id AS "acuerdoId", tipo, titulo, descripcion,
                    TO_CHAR(fecha_ejecucion, 'YYYY-MM-DD') AS "fechaEjecucion", ubicacion_canal AS "ubicacionCanal",
-                   responsable_id AS "responsableId", estado, color_preview AS "colorPreview", archivos`,
-        [evidenciaId, body.compromisoId, body.acuerdoId, body.tipo, body.titulo, body.descripcion, body.fechaEjecucion, body.ubicacionCanal, body.responsableId, companiaId, archivos, 'En revisión', body.colorPreview]
+                   responsable_id AS "responsableId", estado, color_preview AS "colorPreview", archivos, observaciones`,
+        [evidenciaId, body.compromisoId, body.acuerdoId, body.tipo, body.titulo, body.descripcion, body.fechaEjecucion, body.ubicacionCanal, body.responsableId, companiaId, archivos, 'En revisión', body.colorPreview, body.observaciones || null]
       );
 
       console.log('Evidencia created successfully:', evidenciaId);
-      sendJson(response, 201, result.rows[0]);
+      const evidenciaCreada = result.rows[0];
+
+      // Send approval email to marca
+      const acuerdoResult = await pool.query(
+        `SELECT a.id, a.nombre, a.marca_id FROM acuerdos WHERE id = $1`,
+        [body.acuerdoId]
+      );
+
+      if (acuerdoResult.rows.length > 0) {
+        const acuerdo = acuerdoResult.rows[0];
+        const marcaResult = await pool.query(
+          `SELECT id, nombre, correo_contacto_1 FROM marcas WHERE id = $1`,
+          [acuerdo.marca_id]
+        );
+
+        if (marcaResult.rows.length > 0) {
+          const marca = marcaResult.rows[0];
+          const archivosInfo = body.archivos ? body.archivos.map((a: any) => ({ nombre: a.nombre, tipo: a.tipo })) : [];
+
+          sendEvidenciaAprobacionEmail(
+            { nombre: marca.nombre, contacto: { email: marca.correo_contacto_1 } },
+            {
+              titulo: body.titulo,
+              descripcion: body.descripcion,
+              tipo: body.tipo,
+              acuerdoNombre: acuerdo.nombre,
+              evidenciaId: evidenciaId
+            },
+            archivosInfo
+          ).catch(err => console.error('Error enviando email de aprobación:', err));
+        }
+      }
+
+      sendJson(response, 201, evidenciaCreada);
       return;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
@@ -2902,6 +2957,11 @@ const server = createServer(async (request, response) => {
         values.push(body.estado);
         paramIndex++;
       }
+      if (body.observaciones !== undefined) {
+        updates.push(`observaciones = $${paramIndex}`);
+        values.push(body.observaciones || null);
+        paramIndex++;
+      }
 
       if (updates.length === 0) {
         sendJson(response, 400, { error: 'No fields to update.' });
@@ -2915,7 +2975,7 @@ const server = createServer(async (request, response) => {
         `UPDATE evidencias SET ${updates.join(', ')} WHERE id = $${paramIndex} AND compania_id = $${paramIndex + 1}
          RETURNING id, compromiso_id AS "compromisoId", acuerdo_id AS "acuerdoId", tipo, titulo, descripcion,
                    TO_CHAR(fecha_ejecucion, 'YYYY-MM-DD') AS "fechaEjecucion", ubicacion_canal AS "ubicacionCanal",
-                   responsable_id AS "responsableId", estado, color_preview AS "colorPreview", archivos`,
+                   responsable_id AS "responsableId", estado, color_preview AS "colorPreview", archivos, observaciones`,
         values
       );
 
@@ -2929,6 +2989,151 @@ const server = createServer(async (request, response) => {
     } catch (error) {
       console.error('Error updating evidencia:', error);
       sendJson(response, 500, { error: 'No fue posible actualizar la evidencia.' });
+      return;
+    }
+  }
+
+  // POST /api/evidencias/:id/aprobar - Approve evidencia
+  if (request.method === 'POST' && request.url?.match(/^\/api\/evidencias\/[^/]+\/aprobar/)) {
+    try {
+      const evidenciaId = request.url.split('/')[3];
+      const body = await readJson(request) as any;
+
+      const result = await pool.query(
+        `UPDATE evidencias SET estado = 'Aprobada', observaciones = $1 WHERE id = $2
+         RETURNING id, compromiso_id AS "compromisoId", acuerdo_id AS "acuerdoId", tipo, titulo, descripcion,
+                   TO_CHAR(fecha_ejecucion, 'YYYY-MM-DD') AS "fechaEjecucion", ubicacion_canal AS "ubicacionCanal",
+                   responsable_id AS "responsableId", estado, color_preview AS "colorPreview", archivos, observaciones`,
+        [body.observaciones || null, evidenciaId]
+      );
+
+      if (result.rowCount === 0) {
+        sendJson(response, 404, { error: 'Evidencia no encontrada.' });
+        return;
+      }
+
+      console.log(`✅ Evidencia ${evidenciaId} aprobada`);
+      sendJson(response, 200, result.rows[0]);
+      return;
+    } catch (error) {
+      console.error('Error approving evidencia:', error);
+      sendJson(response, 500, { error: 'No fue posible aprobar la evidencia.' });
+      return;
+    }
+  }
+
+  // POST /api/evidencias/:id/rechazar - Reject evidencia
+  if (request.method === 'POST' && request.url?.match(/^\/api\/evidencias\/[^/]+\/rechazar/)) {
+    try {
+      const evidenciaId = request.url.split('/')[3];
+      const body = await readJson(request) as any;
+
+      if (!body.observaciones) {
+        sendJson(response, 400, { error: 'Las observaciones son requeridas para rechazar una evidencia.' });
+        return;
+      }
+
+      const result = await pool.query(
+        `UPDATE evidencias SET estado = 'Rechazada', observaciones = $1 WHERE id = $2
+         RETURNING id, compromiso_id AS "compromisoId", acuerdo_id AS "acuerdoId", tipo, titulo, descripcion,
+                   TO_CHAR(fecha_ejecucion, 'YYYY-MM-DD') AS "fechaEjecucion", ubicacion_canal AS "ubicacionCanal",
+                   responsable_id AS "responsableId", estado, color_preview AS "colorPreview", archivos, observaciones`,
+        [body.observaciones, evidenciaId]
+      );
+
+      if (result.rowCount === 0) {
+        sendJson(response, 404, { error: 'Evidencia no encontrada.' });
+        return;
+      }
+
+      console.log(`❌ Evidencia ${evidenciaId} rechazada`);
+      sendJson(response, 200, result.rows[0]);
+      return;
+    } catch (error) {
+      console.error('Error rejecting evidencia:', error);
+      sendJson(response, 500, { error: 'No fue posible rechazar la evidencia.' });
+      return;
+    }
+  }
+
+  // POST /api/evidencias/:id/solicitar-revision - Request revision for evidencia
+  if (request.method === 'POST' && request.url?.match(/^\/api\/evidencias\/[^/]+\/solicitar-revision/)) {
+    try {
+      const evidenciaId = request.url.split('/')[3];
+
+      // Get evidencia data
+      const evidenciaResult = await pool.query(
+        `SELECT id, compromiso_id, acuerdo_id, tipo, titulo, descripcion, estado, archivos FROM evidencias WHERE id = $1`,
+        [evidenciaId]
+      );
+
+      if (evidenciaResult.rows.length === 0) {
+        sendJson(response, 404, { error: 'Evidencia no encontrada.' });
+        return;
+      }
+
+      const evidencia = evidenciaResult.rows[0];
+
+      if (evidencia.estado !== 'En revisión') {
+        sendJson(response, 400, { error: 'Solo se puede solicitar revisión para evidencias en estado "En revisión".' });
+        return;
+      }
+
+      // Get acuerdo data
+      const acuerdoResult = await pool.query(
+        `SELECT id, nombre, marca_id FROM acuerdos WHERE id = $1`,
+        [evidencia.acuerdo_id]
+      );
+
+      if (acuerdoResult.rows.length === 0) {
+        sendJson(response, 404, { error: 'Acuerdo no encontrado.' });
+        return;
+      }
+
+      const acuerdo = acuerdoResult.rows[0];
+
+      // Get marca data
+      const marcaResult = await pool.query(
+        `SELECT id, nombre, correo_contacto_1 FROM marcas WHERE id = $1`,
+        [acuerdo.marca_id]
+      );
+
+      if (marcaResult.rows.length === 0) {
+        sendJson(response, 404, { error: 'Marca no encontrada.' });
+        return;
+      }
+
+      const marca = marcaResult.rows[0];
+
+      // Send approval request email (async, don't wait)
+      if (marca.correo_contacto_1) {
+        try {
+          const archivosInfo = evidencia.archivos ? JSON.parse(evidencia.archivos).map((a: any) => ({ nombre: a.nombre, tipo: a.tipo })) : [];
+
+          sendEvidenciaAprobacionEmail(
+            { nombre: marca.nombre, contacto: { email: marca.correo_contacto_1 } },
+            {
+              titulo: evidencia.titulo,
+              descripcion: evidencia.descripcion,
+              tipo: evidencia.tipo,
+              acuerdoNombre: acuerdo.nombre,
+              evidenciaId: evidenciaId
+            },
+            archivosInfo
+          ).catch(err => console.error('❌ Error enviando email de solicitud de revisión:', err));
+        } catch (emailErr) {
+          console.error('❌ Error preparando email de solicitud de revisión:', emailErr);
+        }
+      } else {
+        console.warn('⚠️ No hay correo de contacto para la marca:', marca.nombre);
+      }
+
+      console.log(`📧 Solicitud de revisión enviada para evidencia: ${evidenciaId}`);
+      sendJson(response, 200, { success: true, message: 'Solicitud de revisión enviada correctamente.' });
+      return;
+    } catch (error) {
+      console.error('Error requesting revision:', error);
+      sendJson(response, 500, { error: 'No fue posible solicitar la revisión.' });
       return;
     }
   }
@@ -3341,5 +3546,6 @@ Responde a la siguiente pregunta en español de forma clara y concisa:
 server.listen(port, async () => {
   console.log(`Sports Act Hub API listening on http://localhost:${port}`);
   await ensureAcuerdoAlertaFields();
+  await ensureEvidenciaFields();
   await scheduleAcuerdoAlerts();
 });
