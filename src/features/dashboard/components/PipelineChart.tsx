@@ -1,7 +1,7 @@
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
-import { getPipelinePorEtapa } from '@/lib/selectors';
-import { formatCurrency, formatNumber } from '@/lib/formatters';
+import { usePipelineData } from '@/hooks/usePipelineData';
+import { formatCOP, formatNumero } from '@/lib/format';
 
 const COLOR_ETAPA: Record<string, string> = {
   Prospección: '#9ca3af',
@@ -19,24 +19,25 @@ interface TooltipPayloadItem {
 function TooltipPersonalizado({ active, payload }: { active?: boolean; payload?: TooltipPayloadItem[] }) {
   if (!active || !payload?.length) return null;
   const { etapa, cantidad, valorCOP } = payload[0].payload;
+  const valorNumerico = Number(valorCOP) || 0;
   return (
     <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs shadow-md">
       <p className="font-semibold text-gray-900">{etapa}</p>
       <p className="text-gray-500">{cantidad} oportunidad(es)</p>
-      <p className="font-medium text-gray-700">{formatCurrency(valorCOP)}</p>
+      <p className="font-medium text-gray-700">{formatCOP(isNaN(valorNumerico) ? 0 : valorNumerico)}</p>
     </div>
   );
 }
 
 export function PipelineChart() {
-  const datos = getPipelinePorEtapa();
+  const { data: datos } = usePipelineData();
   const totalOportunidades = datos.reduce((total, d) => total + d.cantidad, 0);
 
   return (
     <Card>
       <CardHeader
         title="Pipeline por etapa"
-        description={`${formatNumber(totalOportunidades)} oportunidades en seguimiento`}
+        description={`${formatNumero(totalOportunidades)} oportunidades en seguimiento`}
       />
       <CardContent>
         <div className="h-72 w-full">
@@ -54,11 +55,11 @@ export function PipelineChart() {
                 height={50}
               />
               <YAxis
-                tickFormatter={(valor: number) => formatCurrency(valor)}
-                tick={{ fontSize: 11, fill: '#6b7280' }}
+                tickFormatter={(valor: number) => formatCOP(valor)}
+                tick={{ fontSize: 10, fill: '#6b7280' }}
                 axisLine={false}
                 tickLine={false}
-                width={64}
+                width={120}
               />
               <Tooltip content={<TooltipPersonalizado />} cursor={{ fill: '#f9fafb' }} />
               <Bar dataKey="valorCOP" radius={[6, 6, 0, 0]} maxBarSize={48}>

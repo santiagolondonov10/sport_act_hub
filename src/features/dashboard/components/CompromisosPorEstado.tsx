@@ -1,9 +1,9 @@
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { getEstiloEstado } from '@/lib/statusStyles';
-import { getCompromisosPorEstado } from '@/lib/selectors';
+import { useCommitmentsData } from '@/hooks/useCommitmentsData';
 
 export function CompromisosPorEstado() {
-  const datos = getCompromisosPorEstado();
+  const { data: datos } = useCommitmentsData();
   const total = datos.reduce((sum, d) => sum + d.cantidad, 0) || 1;
 
   return (

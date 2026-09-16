@@ -1,10 +1,10 @@
 import { FolderCheck, MessageSquare } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
-import { getActividadReciente } from '@/lib/selectors';
+import { useActividadReciente } from '@/hooks/useActividadReciente';
 import { formatFecha } from '@/lib/format';
 
 export function ActividadReciente() {
-  const actividad = getActividadReciente(7);
+  const { data: actividad } = useActividadReciente();
 
   return (
     <Card>

@@ -2,15 +2,8 @@ import { Wallet, TrendingUp, Package, FileSignature, CheckCircle2, TriangleAlert
 import { PageHeader } from '@/components/shared/PageHeader';
 import { StatCard } from '@/components/shared/StatCard';
 import { useLanguage } from '@/lib/LanguageContext';
-import { formatCOPCompact, formatNumero, formatPorcentaje } from '@/lib/format';
-import {
-  getValorPipeline,
-  getIngresosCerrados,
-  getActivosDisponiblesCount,
-  getAcuerdosActivosCount,
-  getCumplimientoGeneral,
-  getCompromisosVencidosCount,
-} from '@/lib/selectors';
+import { formatCOP, formatCOPCompact, formatNumero, formatPorcentaje } from '@/lib/format';
+import { useDashboardStats } from '@/hooks/useDashboardStats';
 import { PipelineChart } from './components/PipelineChart';
 import { CumplimientoChart } from './components/CumplimientoChart';
 import { CompromisosPorEstado } from './components/CompromisosPorEstado';
@@ -22,13 +15,14 @@ import { ValorAudiencia } from './components/ValorAudiencia';
 
 export function DashboardPage() {
   const { t } = useLanguage();
+  const { stats } = useDashboardStats();
 
-  const valorPipeline = getValorPipeline();
-  const ingresosCerrados = getIngresosCerrados();
-  const activosDisponibles = getActivosDisponiblesCount();
-  const acuerdosActivos = getAcuerdosActivosCount();
-  const cumplimientoGeneral = getCumplimientoGeneral();
-  const compromisosVencidos = getCompromisosVencidosCount();
+  const valorPipeline = stats?.valorPipeline ?? 0;
+  const ingresosCerrados = stats?.ingresosCerrados ?? 0;
+  const activosDisponibles = stats?.activosDisponibles ?? 0;
+  const acuerdosActivos = stats?.acuerdosActivos ?? 0;
+  const cumplimientoGeneral = stats?.cumplimientoGeneral ?? 0;
+  const compromisosVencidos = stats?.compromisosVencidos ?? 0;
 
   return (
     <div>
@@ -40,7 +34,7 @@ export function DashboardPage() {
       <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <StatCard
           etiqueta={t('dashboard.valorPipeline')}
-          valor={formatCOPCompact(valorPipeline)}
+          valor={formatCOP(valorPipeline)}
           icono={TrendingUp}
           tono="marca"
           nota={t('dashboard.oportunidadesAbiertas')}

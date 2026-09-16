@@ -1,5 +1,5 @@
 import { useDroppable } from '@dnd-kit/core';
-import { formatCOPCompact } from '@/lib/format';
+import { formatCOP } from '@/lib/format';
 import { getEstiloEstado } from '@/lib/statusStyles';
 import type { EtapaOportunidad, Oportunidad } from '@/types';
 import { OportunidadCard } from './OportunidadCard';
@@ -24,7 +24,7 @@ export function KanbanColumn({ etapa, oportunidades, onCambiarEtapa }: KanbanCol
         </span>
         <span className="text-xs font-medium text-gray-500">{oportunidades.length}</span>
       </div>
-      <p className="px-3 pb-2 pt-1 text-xs text-gray-500">{formatCOPCompact(valorTotal)}</p>
+      <p className="px-3 pb-2 pt-1 text-xs text-gray-500">{formatCOP(valorTotal)}</p>
 
       <div
         ref={setNodeRef}

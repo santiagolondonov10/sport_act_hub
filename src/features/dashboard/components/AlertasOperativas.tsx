@@ -1,9 +1,9 @@
 import { TriangleAlert, CircleAlert, CircleCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
-import { getAlertasOperativas } from '@/lib/selectors';
+import { useDashboardAlertas } from '@/hooks/useDashboardAlertas';
 
 export function AlertasOperativas() {
-  const alertas = getAlertasOperativas();
+  const { data: alertas } = useDashboardAlertas();
 
   return (
     <Card>

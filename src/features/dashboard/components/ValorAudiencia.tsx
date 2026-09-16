@@ -1,19 +1,15 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, Lightbulb, UsersRound } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
-import { canalesAudiencia, campanasAudiencia, segmentosAudiencia } from '@/data';
-import { formatNumero, formatNumeroCompacto, formatPorcentaje } from '@/lib/format';
+import { useValorAudiencia } from '@/hooks/useValorAudiencia';
+import { formatNumero, formatNumeroCompacto } from '@/lib/format';
 
 export function ValorAudiencia() {
-  const canalEmail = canalesAudiencia.find((c) => c.id === 'canal-email');
-  const contactosPropios = canalEmail?.tamanoAudiencia ?? 0;
-  const segmentosPropios = segmentosAudiencia.filter((s) => s.tipoDato === 'Propia');
-  const crecimientoPromedio = segmentosPropios.length
-    ? segmentosPropios.reduce((s, seg) => s + seg.crecimiento, 0) / segmentosPropios.length
-    : 0;
-  const segmentosActivables = segmentosAudiencia.filter((s) => s.estado === 'Activable').length;
-  const alcancePeriodo = canalesAudiencia.reduce((s, c) => s + c.alcancePeriodo, 0);
-  const campanasConPatrocinio = campanasAudiencia.filter((c) => c.patrocinadorId).length;
+  const { data } = useValorAudiencia();
+
+  const segmentosActivables = data?.segmentosActivables ?? 0;
+  const alcancePeriodo = data?.alcancePeriodo ?? 0;
+  const campanasConPatrocinio = data?.campanasConPatrocinio ?? 0;
 
   return (
     <Card>
@@ -29,12 +25,12 @@ export function ValorAudiencia() {
       <CardContent>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div>
-            <p className="text-xs text-gray-500">Contactos propios autorizados</p>
-            <p className="text-lg font-semibold text-gray-900">{formatNumero(contactosPropios)}</p>
+            <p className="text-xs text-gray-500">Canales de audiencia</p>
+            <p className="text-lg font-semibold text-gray-900">{formatNumero(data?.canalesCount ?? 0)}</p>
           </div>
           <div>
-            <p className="text-xs text-gray-500">Crecimiento de la base</p>
-            <p className="text-lg font-semibold text-success-700">+{formatPorcentaje(crecimientoPromedio, 1)}</p>
+            <p className="text-xs text-gray-500">Campañas con patrocinio</p>
+            <p className="text-lg font-semibold text-success-700">{formatNumero(campanasConPatrocinio)}</p>
           </div>
           <div>
             <p className="text-xs text-gray-500">Segmentos activables</p>

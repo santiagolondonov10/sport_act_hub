@@ -2053,7 +2053,8 @@ const server = createServer(async (request, response) => {
                 responsable_interno_correo AS "responsableInternoCorreo",
                 responsable_interno_telefono AS "responsableInternoTelefono",
                 etapa,
-                valor_estimado_cop AS "valorEstimadoCOP", fecha_estimada_cierre AS "fechaEstimadaCierre",
+                COALESCE(valor_estimado_cop, 0)::int AS "valorEstimadoCOP",
+                fecha_estimada_cierre AS "fechaEstimadaCierre",
                 activos_propuestos_ids AS "activosPropuestosIds", proximo_paso AS "proximoPaso",
                 contratos_adjuntos AS "contratosAdjuntos", documentos_adjuntos AS "documentosAdjuntos",
                 created_at AS "fechaCreacion"
@@ -3976,6 +3977,547 @@ Responde a la siguiente pregunta en español de forma clara y concisa:
     } catch (error) {
       console.error('Error fetching notification logs:', error);
       sendJson(response, 500, { error: 'Error al obtener logs de notificación.' });
+      return;
+    }
+  }
+
+  // GET /api/dashboard/oportunidades-abiertas - Get all open opportunities for company
+  if (request.method === 'GET' && request.url === '/api/dashboard/oportunidades-abiertas') {
+    try {
+      const userId = request.headers['x-user-id'];
+      if (typeof userId !== 'string' || !userId) {
+        sendJson(response, 401, { error: 'Se requiere autenticación.' });
+        return;
+      }
+
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
+      if (!companiaId) {
+        sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
+        return;
+      }
+
+      const result = await pool.query<{ id: string; valor_estimado_cop: string; etapa: string }>(
+        `SELECT id, valor_estimado_cop, etapa
+         FROM oportunidades
+         WHERE compania_id = $1 AND etapa NOT IN ('Firmada', 'Perdida', 'Cancelada')
+         ORDER BY created_at DESC`,
+        [companiaId]
+      );
+
+      sendJson(response, 200, result.rows);
+      return;
+    } catch (error) {
+      console.error('Error fetching open opportunities:', error);
+      sendJson(response, 500, { error: 'No fue posible obtener las oportunidades abiertas.' });
+      return;
+    }
+  }
+
+  // GET /api/dashboard/stats - Get dashboard statistics
+  if (request.method === 'GET' && request.url === '/api/dashboard/stats') {
+    try {
+      const userId = request.headers['x-user-id'];
+      if (typeof userId !== 'string' || !userId) {
+        sendJson(response, 401, { error: 'Se requiere autenticación.' });
+        return;
+      }
+
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
+      if (!companiaId) {
+        sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
+        return;
+      }
+
+      // Pipeline value (open opportunities - not Firmada, Perdida, or Cancelada)
+      const pipelineResult = await pool.query<{ total: string }>(
+        `SELECT COALESCE(SUM(COALESCE(valor_estimado_cop, 0)), 0) as total
+         FROM oportunidades
+         WHERE compania_id = $1 AND etapa NOT IN ('Firmada', 'Perdida', 'Cancelada')`,
+        [companiaId]
+      );
+
+      // Closed income (active agreements)
+      const ingresosResult = await pool.query<{ total: string }>(
+        `SELECT COALESCE(SUM(valor_cop), 0) as total
+         FROM acuerdos
+         WHERE compania_id = $1 AND estado IN ('Activo', 'Próximo a vencer', 'Finalizado')`,
+        [companiaId]
+      );
+
+      // Available assets
+      const activosResult = await pool.query<{ count: string }>(
+        `SELECT COUNT(*) as count
+         FROM activos
+         WHERE compania_id = $1 AND estado = 'Disponible'`,
+        [companiaId]
+      );
+
+      // Active agreements
+      const acuerdosActivosResult = await pool.query<{ count: string }>(
+        `SELECT COUNT(*) as count
+         FROM acuerdos
+         WHERE compania_id = $1 AND estado IN ('Activo', 'Próximo a vencer')`,
+        [companiaId]
+      );
+
+      // General compliance percentage
+      const complianceResult = await pool.query<{ total: string; completed: string }>(
+        `SELECT
+           COUNT(*) as total,
+           COUNT(*) FILTER (WHERE estado = 'Cumplido') as completed
+         FROM compromisos
+         WHERE compania_id = $1`,
+        [companiaId]
+      );
+
+      // Overdue commitments
+      const vencidosResult = await pool.query<{ count: string }>(
+        `SELECT COUNT(*) as count
+         FROM compromisos
+         WHERE compania_id = $1 AND estado = 'Vencido'`,
+        [companiaId]
+      );
+
+      const totalCompromisos = parseInt(complianceResult.rows[0]?.total || '0');
+      const completedCompromisos = parseInt(complianceResult.rows[0]?.completed || '0');
+      const compliancePercentage = totalCompromisos > 0 ? Math.round((completedCompromisos / totalCompromisos) * 100) : 0;
+
+      const stats = {
+        valorPipeline: parseInt(pipelineResult.rows[0]?.total || '0'),
+        ingresosCerrados: parseInt(ingresosResult.rows[0]?.total || '0'),
+        activosDisponibles: parseInt(activosResult.rows[0]?.count || '0'),
+        acuerdosActivos: parseInt(acuerdosActivosResult.rows[0]?.count || '0'),
+        cumplimientoGeneral: compliancePercentage,
+        compromisosVencidos: parseInt(vencidosResult.rows[0]?.count || '0'),
+      };
+
+      sendJson(response, 200, stats);
+      return;
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+      sendJson(response, 500, { error: 'No fue posible obtener las estadísticas del dashboard.' });
+      return;
+    }
+  }
+
+  // GET /api/dashboard/pipeline-por-etapa - Get pipeline by stage
+  if (request.method === 'GET' && request.url === '/api/dashboard/pipeline-por-etapa') {
+    try {
+      const userId = request.headers['x-user-id'];
+      if (typeof userId !== 'string' || !userId) {
+        sendJson(response, 401, { error: 'Se requiere autenticación.' });
+        return;
+      }
+
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
+      if (!companiaId) {
+        sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
+        return;
+      }
+
+      const result = await pool.query<{ etapa: string; cantidad: string; valor_cop: string }>(
+        `SELECT
+           etapa,
+           COUNT(*) as cantidad,
+           COALESCE(SUM(COALESCE(valor_estimado_cop, 0)::bigint), 0) as valor_cop
+         FROM oportunidades
+         WHERE compania_id = $1 AND etapa NOT IN ('Firmada', 'Perdida', 'Cancelada')
+         GROUP BY etapa
+         ORDER BY CASE etapa
+           WHEN 'Prospección' THEN 1
+           WHEN 'Contactado' THEN 2
+           WHEN 'Propuesta' THEN 3
+           WHEN 'Negociación' THEN 4
+           ELSE 5
+         END`,
+        [companiaId]
+      );
+
+      const pipeline = result.rows.map((row) => {
+        const cantidad = Math.max(0, parseInt(row.cantidad) || 0);
+        const valorCOP = Math.max(0, parseInt(String(row.valor_cop)) || 0);
+        return {
+          etapa: row.etapa,
+          cantidad,
+          valorCOP,
+        };
+      });
+
+      sendJson(response, 200, pipeline);
+      return;
+    } catch (error) {
+      console.error('Error fetching pipeline by stage:', error);
+      sendJson(response, 500, { error: 'No fue posible obtener el pipeline por etapa.' });
+      return;
+    }
+  }
+
+  // GET /api/dashboard/compromisos-por-estado - Get commitments by state
+  if (request.method === 'GET' && request.url === '/api/dashboard/compromisos-por-estado') {
+    try {
+      const userId = request.headers['x-user-id'];
+      if (typeof userId !== 'string' || !userId) {
+        sendJson(response, 401, { error: 'Se requiere autenticación.' });
+        return;
+      }
+
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
+      if (!companiaId) {
+        sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
+        return;
+      }
+
+      const result = await pool.query<{ estado: string; cantidad: string }>(
+        `SELECT estado, COUNT(*) as cantidad
+         FROM compromisos
+         WHERE compania_id = $1
+         GROUP BY estado
+         ORDER BY CASE estado
+           WHEN 'Pendiente' THEN 1
+           WHEN 'En curso' THEN 2
+           WHEN 'En revisión' THEN 3
+           WHEN 'Cumplido' THEN 4
+           WHEN 'Vencido' THEN 5
+           ELSE 6
+         END`,
+        [companiaId]
+      );
+
+      const compromisos = result.rows.map((row) => ({
+        estado: row.estado,
+        cantidad: parseInt(row.cantidad),
+      }));
+
+      sendJson(response, 200, compromisos);
+      return;
+    } catch (error) {
+      console.error('Error fetching commitments by state:', error);
+      sendJson(response, 500, { error: 'No fue posible obtener los compromisos por estado.' });
+      return;
+    }
+  }
+
+  // GET /api/dashboard/cumplimiento-mensual - Get monthly compliance
+  if (request.method === 'GET' && request.url === '/api/dashboard/cumplimiento-mensual') {
+    try {
+      const userId = request.headers['x-user-id'];
+      if (typeof userId !== 'string' || !userId) {
+        sendJson(response, 401, { error: 'Se requiere autenticación.' });
+        return;
+      }
+
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
+      if (!companiaId) {
+        sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
+        return;
+      }
+
+      const result = await pool.query<{ mes: string; cumplimiento: string }>(
+        `WITH meses AS (
+          SELECT generate_series(now() - interval '6 months', now(), interval '1 month') as fecha
+        )
+        SELECT
+          to_char(meses.fecha, 'Mon') as mes,
+          CASE
+            WHEN COUNT(c.*) = 0 THEN 0
+            ELSE ROUND(COUNT(c.*) FILTER (WHERE c.estado = 'Cumplido') * 100.0 / COUNT(c.*))
+          END as cumplimiento
+        FROM meses
+        LEFT JOIN compromisos c ON
+          compania_id = $1
+          AND EXTRACT(YEAR FROM c.fecha_limite) = EXTRACT(YEAR FROM meses.fecha)
+          AND EXTRACT(MONTH FROM c.fecha_limite) = EXTRACT(MONTH FROM meses.fecha)
+        GROUP BY meses.fecha, mes
+        ORDER BY meses.fecha`,
+        [companiaId]
+      );
+
+      const cumplimiento = result.rows.map((row) => ({
+        mes: row.mes.substring(0, 3),
+        cumplimiento: parseInt(row.cumplimiento),
+      }));
+
+      sendJson(response, 200, cumplimiento);
+      return;
+    } catch (error) {
+      console.error('Error fetching monthly compliance:', error);
+      sendJson(response, 500, { error: 'No fue posible obtener el cumplimiento mensual.' });
+      return;
+    }
+  }
+
+  // GET /api/dashboard/alertas - Get operational alerts
+  if (request.method === 'GET' && request.url === '/api/dashboard/alertas') {
+    try {
+      const userId = request.headers['x-user-id'];
+      if (typeof userId !== 'string' || !userId) {
+        sendJson(response, 401, { error: 'Se requiere autenticación.' });
+        return;
+      }
+
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
+      if (!companiaId) {
+        sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
+        return;
+      }
+
+      const alertas: any[] = [];
+
+      // Count overdue commitments
+      const vencidosResult = await pool.query<{ count: string }>(
+        `SELECT COUNT(*) as count FROM compromisos WHERE compania_id = $1 AND estado = 'Vencido'`,
+        [companiaId]
+      );
+      const vencidosCount = parseInt(vencidosResult.rows[0]?.count || '0');
+      if (vencidosCount > 0) {
+        alertas.push({
+          id: 'alerta-vencidos',
+          nivel: 'alta',
+          mensaje: `${vencidosCount} compromiso(s) vencido(s) requieren atención inmediata.`,
+        });
+      }
+
+      // Count agreements expiring soon
+      const proximosResult = await pool.query<{ count: string }>(
+        `SELECT COUNT(*) as count FROM acuerdos
+         WHERE compania_id = $1 AND estado IN ('Activo', 'Próximo a vencer')
+         AND fecha_fin <= CURRENT_DATE + INTERVAL '60 days'
+         AND fecha_fin > CURRENT_DATE`,
+        [companiaId]
+      );
+      const proximosCount = parseInt(proximosResult.rows[0]?.count || '0');
+      if (proximosCount > 0) {
+        alertas.push({
+          id: 'alerta-vencimiento',
+          nivel: 'media',
+          mensaje: `${proximosCount} acuerdo(s) vencen en menos de 60 días.`,
+        });
+      }
+
+      // Count rejected evidences
+      const rechazadasResult = await pool.query<{ count: string }>(
+        `SELECT COUNT(*) as count FROM evidencias WHERE compania_id = $1 AND estado = 'Rechazada'`,
+        [companiaId]
+      );
+      const rechazadasCount = parseInt(rechazadasResult.rows[0]?.count || '0');
+      if (rechazadasCount > 0) {
+        alertas.push({
+          id: 'alerta-evidencias',
+          nivel: 'media',
+          mensaje: `${rechazadasCount} evidencia(s) rechazada(s) esperan corrección.`,
+        });
+      }
+
+      // Count evidences under review
+      const enRevisionResult = await pool.query<{ count: string }>(
+        `SELECT COUNT(*) as count FROM evidencias WHERE compania_id = $1 AND estado = 'En revisión'`,
+        [companiaId]
+      );
+      const enRevisionCount = parseInt(enRevisionResult.rows[0]?.count || '0');
+      if (enRevisionCount > 0) {
+        alertas.push({
+          id: 'alerta-revision',
+          nivel: 'media',
+          mensaje: `${enRevisionCount} evidencia(s) esperan revisión de aprobación.`,
+        });
+      }
+
+      sendJson(response, 200, alertas);
+      return;
+    } catch (error) {
+      console.error('Error fetching alerts:', error);
+      sendJson(response, 500, { error: 'No fue posible obtener las alertas.' });
+      return;
+    }
+  }
+
+  // GET /api/dashboard/actividad-reciente - Get recent activity
+  if (request.method === 'GET' && request.url === '/api/dashboard/actividad-reciente') {
+    try {
+      const userId = request.headers['x-user-id'];
+      if (typeof userId !== 'string' || !userId) {
+        sendJson(response, 401, { error: 'Se requiere autenticación.' });
+        return;
+      }
+
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
+      if (!companiaId) {
+        sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
+        return;
+      }
+
+      const result = await pool.query<{ id: string; tipo: string; descripcion: string; fecha: string; autor: string }>(
+        `SELECT
+          id,
+          'evidencia' as tipo,
+          'Evidencia registrada: ' || titulo as descripcion,
+          fecha_ejecucion as fecha,
+          COALESCE(responsable, 'Equipo comercial') as autor
+        FROM evidencias
+        WHERE compania_id = $1
+        UNION ALL
+        SELECT
+          id,
+          'oportunidad' as tipo,
+          'Oportunidad actualizada: ' || nombre as descripcion,
+          CURRENT_TIMESTAMP as fecha,
+          COALESCE(responsable, 'Equipo comercial') as autor
+        FROM oportunidades
+        WHERE compania_id = $1
+        ORDER BY fecha DESC
+        LIMIT 8`,
+        [companiaId]
+      );
+
+      const actividad = result.rows.map((row) => ({
+        id: row.id,
+        tipo: row.tipo,
+        descripcion: row.descripcion,
+        fecha: row.fecha,
+        autor: row.autor,
+      }));
+
+      sendJson(response, 200, actividad);
+      return;
+    } catch (error) {
+      console.error('Error fetching recent activity:', error);
+      sendJson(response, 500, { error: 'No fue posible obtener la actividad reciente.' });
+      return;
+    }
+  }
+
+  // GET /api/dashboard/acuerdos-relevantes - Get relevant agreements
+  if (request.method === 'GET' && request.url === '/api/dashboard/acuerdos-relevantes') {
+    try {
+      const userId = request.headers['x-user-id'];
+      if (typeof userId !== 'string' || !userId) {
+        sendJson(response, 401, { error: 'Se requiere autenticación.' });
+        return;
+      }
+
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
+      if (!companiaId) {
+        sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
+        return;
+      }
+
+      const result = await pool.query<{
+        id: string;
+        nombre: string;
+        marca_nombre: string;
+        valor_cop: string;
+        fecha_fin: string;
+        estado: string;
+      }>(
+        `SELECT
+          a.id,
+          a.nombre,
+          m.nombre as marca_nombre,
+          a.valor_cop,
+          a.fecha_fin,
+          a.estado
+        FROM acuerdos a
+        LEFT JOIN marcas m ON a.marca_id = m.id
+        WHERE a.compania_id = $1 AND a.estado IN ('Activo', 'Próximo a vencer')
+        ORDER BY a.fecha_fin ASC
+        LIMIT 6`,
+        [companiaId]
+      );
+
+      const acuerdos = await Promise.all(
+        result.rows.map(async (row) => {
+          const complianceResult = await pool.query<{ cumplimiento: string }>(
+            `SELECT
+              CASE
+                WHEN COUNT(*) = 0 THEN 0
+                ELSE ROUND(COUNT(*) FILTER (WHERE estado = 'Cumplido') * 100.0 / COUNT(*))
+              END as cumplimiento
+            FROM compromisos
+            WHERE acuerdo_id = $1`,
+            [row.id]
+          );
+
+          return {
+            id: row.id,
+            nombre: row.nombre,
+            marcaNombre: row.marca_nombre || 'Sin marca',
+            valorCOP: parseInt(row.valor_cop),
+            fechaFin: row.fecha_fin,
+            cumplimiento: parseInt(complianceResult.rows[0]?.cumplimiento || '0'),
+            estado: row.estado,
+          };
+        })
+      );
+
+      sendJson(response, 200, acuerdos);
+      return;
+    } catch (error) {
+      console.error('Error fetching relevant agreements:', error);
+      sendJson(response, 500, { error: 'No fue posible obtener los acuerdos relevantes.' });
+      return;
+    }
+  }
+
+  // GET /api/dashboard/valor-audiencia - Get audience value data
+  if (request.method === 'GET' && request.url === '/api/dashboard/valor-audiencia') {
+    try {
+      const userId = request.headers['x-user-id'];
+      if (typeof userId !== 'string' || !userId) {
+        sendJson(response, 401, { error: 'Se requiere autenticación.' });
+        return;
+      }
+
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
+      if (!companiaId) {
+        sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
+        return;
+      }
+
+      // Get channels count
+      const canalesResult = await pool.query<{ count: string }>(
+        `SELECT COUNT(*) as count FROM canales_audiencia WHERE compania_id = $1`,
+        [companiaId]
+      );
+
+      // Get campaigns with sponsorship count
+      const campanasResult = await pool.query<{ count: string }>(
+        `SELECT COUNT(*) as count FROM campanas_audiencia WHERE compania_id = $1 AND patrocinador_id IS NOT NULL`,
+        [companiaId]
+      );
+
+      // Get segments count
+      const segmentosResult = await pool.query<{ count: string }>(
+        `SELECT COUNT(*) as count FROM segmentos_audiencia WHERE compania_id = $1 AND estado = 'Activable'`,
+        [companiaId]
+      );
+
+      // Get total audience reach
+      const alcanceResult = await pool.query<{ alcance: string }>(
+        `SELECT COALESCE(SUM(alcance_periodo), 0) as alcance FROM canales_audiencia WHERE compania_id = $1`,
+        [companiaId]
+      );
+
+      const data = {
+        canalesCount: parseInt(canalesResult.rows[0]?.count || '0'),
+        campanasConPatrocinio: parseInt(campanasResult.rows[0]?.count || '0'),
+        segmentosActivables: parseInt(segmentosResult.rows[0]?.count || '0'),
+        alcancePeriodo: parseInt(alcanceResult.rows[0]?.alcance || '0'),
+      };
+
+      sendJson(response, 200, data);
+      return;
+    } catch (error) {
+      console.error('Error fetching audience value:', error);
+      sendJson(response, 500, { error: 'No fue posible obtener datos de audiencia.' });
       return;
     }
   }

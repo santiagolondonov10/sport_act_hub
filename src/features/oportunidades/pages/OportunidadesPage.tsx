@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useLanguage } from '@/lib/LanguageContext';
 import type { Oportunidad } from '@/types';
-import { formatCOPCompact } from '@/lib/format';
+import { formatCOP } from '@/lib/format';
 import { responsables } from '@/data';
 import { useOportunidades } from '../store';
 import { useToast } from '@/hooks/useToast';
@@ -39,9 +39,12 @@ export function OportunidadesPage() {
     });
   }, [oportunidades, marcaId, responsableId]);
 
-  const abiertas = oportunidades.filter((o) => o.etapa !== 'Firmada' && o.etapa !== 'Perdida');
+  const abiertas = oportunidades.filter((o) => !['Firmada', 'Perdida', 'Cancelada'].includes(o.etapa));
   const ganadas = oportunidades.filter((o) => o.etapa === 'Firmada');
-  const valorAbierto = abiertas.reduce((total, o) => total + o.valorEstimadoCOP, 0);
+  const valorAbierto = abiertas.reduce((total, o) => {
+    const valor = Number(o.valorEstimadoCOP) || 0;
+    return total + (isNaN(valor) ? 0 : valor);
+  }, 0);
 
   async function handleCambiarEtapa(id: string, etapa: Oportunidad['etapa']) {
     try {
@@ -96,7 +99,7 @@ export function OportunidadesPage() {
 
       <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <StatCard etiqueta={t('dashboard.oportunidadesAbiertas2')} valor={String(abiertas.length)} icono={Target} tono="marca" />
-        <StatCard etiqueta={t('dashboard.valorPipeline2')} valor={formatCOPCompact(valorAbierto)} icono={TrendingUp} tono="neutro" />
+        <StatCard etiqueta={t('dashboard.valorPipeline2')} valor={formatCOP(valorAbierto)} icono={TrendingUp} tono="neutro" />
         <StatCard etiqueta={t('dashboard.ganadas')} valor={String(ganadas.length)} icono={Trophy} tono="exito" />
       </div>
 

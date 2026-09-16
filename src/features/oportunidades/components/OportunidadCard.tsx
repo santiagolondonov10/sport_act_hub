@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDraggable } from '@dnd-kit/core';
 import { CalendarClock, GripVertical } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
-import { formatCOPCompact, formatFecha, iniciales } from '@/lib/format';
+import { formatCOP, formatFecha, iniciales } from '@/lib/format';
 import { ETAPAS_OPORTUNIDAD } from '@/types';
 import type { Oportunidad } from '@/types';
 import { useMarcas } from '@/features/marcas/store';
@@ -110,7 +110,7 @@ export function OportunidadCard({ oportunidad, onCambiarEtapa }: OportunidadCard
         </button>
       </div>
 
-      <p className="mb-2 text-sm font-semibold text-brand-800">{formatCOPCompact(oportunidad.valorEstimadoCOP)}</p>
+      <p className="mb-2 text-sm font-semibold text-brand-800">{formatCOP(oportunidad.valorEstimadoCOP)}</p>
 
       <div className="mb-2 flex items-center gap-1.5 text-xs text-gray-500">
         <CalendarClock size={12} />

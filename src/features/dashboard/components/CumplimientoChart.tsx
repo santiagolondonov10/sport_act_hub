@@ -1,6 +1,6 @@
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
-import { getCumplimientoMensual } from '@/lib/selectors';
+import { useMonthlyCumplimiento } from '@/hooks/useMonthlyCumplimiento';
 
 interface TooltipPayloadItem {
   payload: { mes: string; cumplimiento: number };
@@ -18,7 +18,7 @@ function TooltipPersonalizado({ active, payload }: { active?: boolean; payload?:
 }
 
 export function CumplimientoChart() {
-  const datos = getCumplimientoMensual(6);
+  const { data: datos } = useMonthlyCumplimiento();
 
   return (
     <Card>
