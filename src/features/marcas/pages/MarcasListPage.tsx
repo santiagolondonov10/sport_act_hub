@@ -40,14 +40,14 @@ const columnasDefault: ColumnasVisibles = {
   cargo1: true,
   telefono1: true,
   correo1: true,
-  contacto2: true,
-  cargo2: true,
-  telefono2: true,
-  correo2: true,
-  contacto3: true,
-  cargo3: true,
-  telefono3: true,
-  correo3: true,
+  contacto2: false,
+  cargo2: false,
+  telefono2: false,
+  correo2: false,
+  contacto3: false,
+  cargo3: false,
+  telefono3: false,
+  correo3: false,
   rut: true,
 };
 
@@ -218,6 +218,7 @@ export function MarcasListPage() {
           <table className="w-full min-w-[1400px] text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/60 text-left text-xs uppercase tracking-wide text-gray-500">
+                <th className="px-4 py-3 font-medium">Acciones</th>
                 {columnasVisibles.nombre && <th className="px-4 py-3 font-medium">Nombre</th>}
                 {columnasVisibles.sector && <th className="px-4 py-3 font-medium">Sector</th>}
                 {columnasVisibles.identificacion && <th className="px-4 py-3 font-medium">Identificación</th>}
@@ -234,12 +235,30 @@ export function MarcasListPage() {
                 {columnasVisibles.telefono3 && <th className="px-4 py-3 font-medium">Teléfono 3</th>}
                 {columnasVisibles.correo3 && <th className="px-4 py-3 font-medium">Correo 3</th>}
                 {columnasVisibles.rut && <th className="px-4 py-3 font-medium">RUT</th>}
-                <th className="px-4 py-3 font-medium">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {marcas.map((marca) => (
                 <tr key={marca.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60">
+                  <td className="px-4 py-3">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleAbrirModal(marca.id)}
+                        className="text-gray-600 hover:text-brand-800 transition-colors"
+                        aria-label="Editar"
+                      >
+                        <Pencil size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleEliminar(marca.id)}
+                        disabled={eliminando === marca.id}
+                        className="text-gray-600 hover:text-red-600 transition-colors disabled:opacity-50"
+                        aria-label="Eliminar"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </td>
                   {columnasVisibles.nombre && (
                     <td className="px-4 py-3">
                       <p className="font-medium text-gray-900">{marca.nombre}</p>
@@ -330,25 +349,6 @@ export function MarcasListPage() {
                     )}
                     </td>
                   )}
-                  <td className="px-4 py-3">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleAbrirModal(marca.id)}
-                        className="text-gray-600 hover:text-brand-800 transition-colors"
-                        aria-label="Editar"
-                      >
-                        <Pencil size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleEliminar(marca.id)}
-                        disabled={eliminando === marca.id}
-                        className="text-gray-600 hover:text-red-600 transition-colors disabled:opacity-50"
-                        aria-label="Eliminar"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </td>
                 </tr>
               ))}
             </tbody>
@@ -434,8 +434,8 @@ export function MarcasListPage() {
                     {marcasGlobales
                       .filter(
                         (marca) =>
-                          marca.nombre.toLowerCase().includes(busquedaMarcas.toLowerCase()) ||
-                          marca.identificacion.toLowerCase().includes(busquedaMarcas.toLowerCase())
+                          (marca.nombre || '').toLowerCase().includes(busquedaMarcas.toLowerCase()) ||
+                          (marca.identificacion || '').toLowerCase().includes(busquedaMarcas.toLowerCase())
                       )
                       .map((marca) => (
                     <div

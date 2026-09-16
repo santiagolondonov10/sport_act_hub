@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { TextField, TextAreaField, SelectField } from '@/components/ui/Field';
 import { ETAPAS_OPORTUNIDAD } from '@/types';
 import type { Oportunidad } from '@/types';
-import { authHeaders } from '@/lib/auth';
+import { authHeaders, getSessionUser } from '@/lib/auth';
 import { formatNumber } from '@/lib/formatters';
 
 interface Marca {
@@ -60,6 +60,31 @@ export function OportunidadFormModal({ abierto, onCerrar, onGuardar, oportunidad
     oportunidadInicial?.activosPropuestosIds ?? [],
   );
   const [activosMarca, setActivosMarca] = useState<Array<{ id: string; nombre: string }>>([]);
+  const [companiaNombre, setCompaniaNombre] = useState('');
+
+  // Cargar nombre de compañía al montar el componente
+  useEffect(() => {
+    const cargarCompania = async () => {
+      try {
+        const sessionUser = getSessionUser();
+        if (sessionUser?.companiaId) {
+          const headers = new Headers();
+          const auth = authHeaders();
+          Object.entries(auth).forEach(([key, value]) => {
+            if (value) headers.set(key, value);
+          });
+          const response = await fetch(`/api/admin/companias/${sessionUser.companiaId}`, { headers });
+          if (response.ok) {
+            const data = await response.json();
+            setCompaniaNombre(data.nombre || '');
+          }
+        }
+      } catch (error) {
+        console.error('Error loading company:', error);
+      }
+    };
+    cargarCompania();
+  }, []);
 
   // Cargar marcas y activos cuando se abre el modal
   useEffect(() => {
@@ -228,7 +253,7 @@ export function OportunidadFormModal({ abierto, onCerrar, onGuardar, oportunidad
             required
           />
           <SelectField
-            label="Responsable (Contacto)"
+            label="Responsable de la marca (Contacto)"
             value={responsableId}
             onChange={(e) => setResponsableId(e.target.value)}
             options={contactosDisponibles.map((c) => ({
@@ -301,7 +326,7 @@ export function OportunidadFormModal({ abierto, onCerrar, onGuardar, oportunidad
           required
         />
         <div className="border-t border-gray-100 pt-4">
-          <h4 className="mb-3 text-sm font-semibold text-gray-900">Responsable Interno</h4>
+          <h4 className="mb-3 text-sm font-semibold text-gray-900">Responsable Interno {companiaNombre && `(${companiaNombre})`}</h4>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <TextField
               label="Nombre"

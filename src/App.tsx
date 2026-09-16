@@ -3,7 +3,6 @@ import { router } from '@/routes/router';
 import { ToastProvider } from '@/hooks/useToast';
 import { LanguageProvider } from '@/lib/LanguageContext';
 import { SidebarProvider } from '@/lib/SidebarContext';
-import { FloatingChat } from '@/components/FloatingChat';
 import { FloatingAssistant } from '@/features/asistente';
 import { AudienciasProvider } from '@/features/audiencias/store';
 import { MarcasProvider } from '@/features/marcas/store';
@@ -26,7 +25,6 @@ export function App() {
                     <CompromisosProvider>
                       <EvidenciasProvider>
                         <RouterProvider router={router} />
-                        <FloatingChat />
                         <FloatingAssistant />
                       </EvidenciasProvider>
                     </CompromisosProvider>

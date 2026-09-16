@@ -50,7 +50,7 @@ export function AssistantChat({ onCerrar }: AssistantChatProps) {
       {
         id: '1',
         role: 'assistant' as const,
-        content: '¡Hola! Soy tu asistente IA. Puedo ayudarte a buscar información en la base de datos sobre oportunidades, acuerdos, compromisos, evidencias y más. ¿Qué deseas saber?',
+        content: '¡Hola! Soy Lionel Mesa, tu asistente IA. Puedo ayudarte a buscar información en la base de datos sobre oportunidades, acuerdos, compromisos, evidencias y más. ¿Qué deseas saber?',
         timestamp: new Date(),
       },
     ];
@@ -173,8 +173,8 @@ export function AssistantChat({ onCerrar }: AssistantChatProps) {
       {/* Header */}
       <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
         <div>
-          <h3 className="font-semibold text-gray-900">Asistente IA</h3>
-          <p className="text-xs text-gray-500">Consulta tu base de datos</p>
+          <h3 className="font-semibold text-gray-900">Lionel Mesa</h3>
+          <p className="text-xs text-gray-500">Tu asistente IA</p>
         </div>
         <button
           onClick={onCerrar}

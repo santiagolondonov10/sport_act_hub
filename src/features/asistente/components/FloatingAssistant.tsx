@@ -8,7 +8,7 @@ export function FloatingAssistant() {
   return (
     <>
       <button
-        onClick={() => setAbierto(true)}
+        onClick={() => setAbierto(!abierto)}
         className={`fixed z-40 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-all hover:scale-110 ${
           abierto
             ? 'bg-gray-100 text-gray-400'

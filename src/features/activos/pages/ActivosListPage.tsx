@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { LayoutGrid, List, Package, PackageCheck, PackageX, Plus, Image as ImageIcon, Download } from 'lucide-react';
+import { LayoutGrid, List, Package, PackageCheck, PackageX, Plus, Image as ImageIcon, Download, Pencil, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { StatCard } from '@/components/shared/StatCard';
 import { SearchInput } from '@/components/shared/SearchInput';
@@ -22,7 +22,7 @@ type Vista = 'tabla' | 'tarjetas';
 
 export function ActivosListPage() {
   const { t } = useLanguage();
-  const { activos, crearActivo, actualizarActivo } = useActivos();
+  const { activos, crearActivo, actualizarActivo, eliminarActivo } = useActivos();
   const { mostrarToast } = useToast();
   const sessionUser = getSessionUser();
 
@@ -186,6 +186,7 @@ export function ActivosListPage() {
           <table className="w-full min-w-[720px] text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/60 text-left text-xs uppercase tracking-wide text-gray-500">
+                <th className="px-4 py-3 font-medium">Acciones</th>
                 <th className="px-4 py-3 font-medium">Foto</th>
                 <th className="px-4 py-3 font-medium">{t('table.activo')}</th>
                 <th className="px-4 py-3 font-medium">{t('table.categoria')}</th>
@@ -200,6 +201,32 @@ export function ActivosListPage() {
                 const fotoActivo = activo.fotos?.[0];
                 return (
                 <tr key={activo.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60">
+                  <td className="px-4 py-3">
+                    <div className="flex gap-2">
+                      <Link
+                        to={`/activos/${activo.id}`}
+                        className="text-gray-600 hover:text-brand-800 transition-colors"
+                        title="Editar"
+                      >
+                        <Pencil size={16} />
+                      </Link>
+                      <button
+                        onClick={async () => {
+                          if (!confirm('¿Estás seguro de que quieres eliminar este activo?')) return;
+                          try {
+                            await eliminarActivo(activo.id);
+                            mostrarToast('Activo eliminado correctamente.');
+                          } catch (error) {
+                            mostrarToast('Error al eliminar el activo.');
+                          }
+                        }}
+                        className="text-gray-600 hover:text-red-600 transition-colors"
+                        title="Eliminar"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </td>
                   <td className="px-4 py-3">
                     {fotoActivo ? (
                       <div className="flex items-center gap-2">

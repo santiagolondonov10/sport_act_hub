@@ -1813,12 +1813,18 @@ const server = createServer(async (request, response) => {
     }
   }
 
-  // GET /api/marcas/todas - Get all marcas across all companies
+  // GET /api/marcas/todas - Get all marcas except those already in user's company
   if (request.method === 'GET' && request.url === '/api/marcas/todas') {
     try {
       const userId = request.headers['x-user-id'];
       if (typeof userId !== 'string' || !userId) {
         sendJson(response, 401, { error: 'Se requiere autenticación.' });
+        return;
+      }
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
+      if (!companiaId) {
+        sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
         return;
       }
       const result = await pool.query(
@@ -1831,7 +1837,10 @@ const server = createServer(async (request, response) => {
                 contactar_por_whatsapp AS "contactarPorWhatsapp", contactar_por_correo AS "contactarPorCorreo",
                 creado_por AS "creadoPor", actualizado_por AS "actualizadoPor",
                 created_at AS "createdAt", updated_at AS "updatedAt", compania_id AS "companiaId"
-         FROM marcas ORDER BY nombre ASC`
+         FROM marcas
+         WHERE nombre NOT IN (SELECT nombre FROM marcas WHERE compania_id = $1)
+         ORDER BY nombre ASC`,
+        [companiaId]
       );
       sendJson(response, 200, result.rows);
       return;
@@ -3799,7 +3808,7 @@ const server = createServer(async (request, response) => {
       ]);
 
       const contexto = `
-Eres un asistente experto en gestión de patrocinios deportivos. Tienes acceso a los siguientes datos:
+Eres Lionel Mesa, un asistente experto en gestión de patrocinios deportivos. Tienes acceso a los siguientes datos:
 
 MARCAS (Patrocinadores):
 ${marcasResult.rows.map(m => `- ${m.nombre}`).join('\n')}
@@ -3812,6 +3821,11 @@ ${compromisosResult.rows.map(c => `- ${c.entregable} (${c.estado})`).join('\n')}
 
 OPORTUNIDADES (Pipeline comercial):
 ${oportunidadesResult.rows.map(o => `- Etapa: ${o.etapa}`).join('\n')}
+
+RESTRICCIÓN IMPORTANTE:
+Solo puedes responder preguntas relacionadas con la aplicación Sports Act Hub y sus módulos (Activos, Oportunidades, Acuerdos, Compromisos, Evidencias, Reportes, Marcas).
+Si el usuario te pregunta sobre temas que NO están relacionados con la aplicación (política, chistes, farándula, deportes, noticias, etc.),
+debes rechazar amablemente y responder: "Lo siento, solo puedo responder preguntas relacionadas con la aplicación Sports Act Hub. ¿Hay algo sobre tus oportunidades, acuerdos, compromisos o marcas que pueda ayudarte?"
 
 IMPORTANTE - INSTRUCCIONES PARA GENERAR ARCHIVOS:
 Si el usuario pide un reporte, archivo, o cualquier tipo de descarga (ej: "dame un reporte", "genérame un archivo", "quiero un Excel", etc.),
