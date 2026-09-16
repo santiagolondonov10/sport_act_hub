@@ -26,9 +26,9 @@ function normalizeAcuerdo(acuerdo: any) {
 
 function addCorsHeaders(response: import('node:http').ServerResponse) {
   response.setHeader('Access-Control-Allow-Origin', '*');
-  response.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-User-Id, Authorization');
+  response.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-User-Id, X-Compania-Id, Authorization');
   response.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS');
-  response.setHeader('Access-Control-Max-Age', '86400');
+  response.setHeader('Access-Control-Allow-Credentials', 'true');
 }
 
 function sendJson(response: import('node:http').ServerResponse, status: number, payload: unknown) {
@@ -370,6 +370,61 @@ async function scheduleAcuerdoAlerts() {
   });
 
   console.log('⏰ Scheduler de alertas de acuerdos activado (7:00 AM hora colombiana - 12:00 UTC)');
+
+  // Scheduler para alertas de evidencias en revisión
+  cron.schedule('0 12 * * *', async () => {
+    console.log('🔔 Verificando evidencias en revisión para alertas...');
+    try {
+      const evidenciasResult = await pool.query(`
+        SELECT
+          e.id,
+          e.compromiso_id,
+          e.estado,
+          e.fecha_creacion,
+          c.entregable,
+          c.acuerdo_id,
+          c.responsable_id,
+          a.nombre as acuerdo_nombre,
+          a.marca_id,
+          m.nombre as marca_nombre,
+          m.correo_contacto_1,
+          a.responsable_correo,
+          comp.compania_id
+        FROM evidencias e
+        LEFT JOIN compromisos c ON e.compromiso_id = c.id
+        LEFT JOIN acuerdos a ON c.acuerdo_id = a.id
+        LEFT JOIN marcas m ON a.marca_id = m.id
+        LEFT JOIN companias comp ON a.compania_id = comp.id
+        WHERE e.estado = 'En revisión'
+        ORDER BY e.fecha_creacion ASC
+      `);
+
+      if (evidenciasResult.rows.length > 0) {
+        console.log(`📋 Se encontraron ${evidenciasResult.rows.length} evidencias en revisión`);
+
+        for (const evidencia of evidenciasResult.rows) {
+          console.log(`\n⏳ Evidencia "${evidencia.entregable}" en revisión desde ${evidencia.fecha_creacion}`);
+
+          // Guardar log de notificación
+          guardarNotificacionLog(
+            'evidencia',
+            evidencia.id,
+            evidencia.correo_contacto_1 || evidencia.responsable_correo || 'sistema@sportacthub.com',
+            evidencia.marca_nombre || 'Sistema',
+            `Alerta: Evidencia en revisión - ${evidencia.entregable} (Acuerdo: ${evidencia.acuerdo_nombre})`
+          ).catch(err => console.error('❌ Error guardando log de notificación:', err));
+        }
+
+        console.log(`✅ Se procesaron ${evidenciasResult.rows.length} alertas de evidencias en revisión`);
+      } else {
+        console.log('✅ No hay evidencias en revisión');
+      }
+    } catch (error) {
+      console.error('❌ Error en el scheduler de evidencias:', error);
+    }
+  });
+
+  console.log('⏰ Scheduler de alertas de evidencias activado (7:00 AM hora colombiana - 12:00 UTC)');
 }
 
 async function getAdminConfiguration() {
@@ -405,9 +460,11 @@ async function getAdminReports() {
 }
 
 const server = createServer(async (request, response) => {
+  // Agregar headers CORS a TODAS las respuestas primero
+  addCorsHeaders(response);
+
   // Manejar solicitudes OPTIONS (preflight de CORS)
   if (request.method === 'OPTIONS') {
-    addCorsHeaders(response);
     response.writeHead(204);
     response.end();
     return;
@@ -920,7 +977,7 @@ const server = createServer(async (request, response) => {
                 a.canal, a.descripcion, a.valoracion_cop AS "valoracionCOP",
                 a.inventario_total AS "inventarioTotal", a.inventario_disponible AS "inventarioDisponible",
                 a.alcance_estimado AS "alcanceEstimado", a.estado, a.derechos_incluidos AS "derechosIncluidos",
-                a.imagen_color AS "imagenColor", a.documentos_adjuntos AS "documentosAdjuntos", a.created_at AS "createdAt", a.updated_at AS "updatedAt",
+                a.imagen_color AS "imagenColor", a.documentos_adjuntos AS "documentosAdjuntos", a.created_at AS "createdAt", a.updated_at AS "updatedAt", a.compania_id AS "companiaId",
                 COALESCE(json_agg(aa.acuerdo_id) FILTER (WHERE aa.acuerdo_id IS NOT NULL), '[]'::json) AS "acuerdosAsociadosIds",
                 COALESCE(json_agg(json_build_object('id', af.id, 'nombreArchivo', af.nombre_archivo, 'tipoMime', af.tipo_mime, 'tamanioBytes', af.tamanio_bytes, 'principal', af.principal, 'createdAt', af.created_at)) FILTER (WHERE af.id IS NOT NULL), '[]'::json) AS "fotos"
          FROM activos a
@@ -932,6 +989,8 @@ const server = createServer(async (request, response) => {
       // Obtener companiaId (override si ADMIN seleccionó, o del usuario)
       const overrideCompaniaId = getCompaniaIdFromRequest(request);
       const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
+
+      console.log(`[GET /api/activos] userId: ${userId}, isAdmin: ${isAdmin}, overrideCompaniaId: ${overrideCompaniaId}, companiaId: ${companiaId}`);
 
       // Filtrar por compañía si está disponible (admin con compañía seleccionada o usuario regular)
       if (companiaId) {
@@ -945,6 +1004,7 @@ const server = createServer(async (request, response) => {
 
       query += ' GROUP BY a.id, ac.nombre, a.canal, a.descripcion, a.categoria_id, a.valoracion_cop, a.inventario_total, a.inventario_disponible, a.alcance_estimado, a.estado, a.derechos_incluidos, a.imagen_color, a.documentos_adjuntos, a.created_at, a.updated_at ORDER BY a.created_at DESC';
       const result = await pool.query(query, params);
+      console.log(`[GET /api/activos] Found ${result.rows.length} activos`);
       sendJson(response, 200, result.rows);
       return;
     } catch (error) {
@@ -2780,39 +2840,39 @@ const server = createServer(async (request, response) => {
 
       if (body.entregable !== undefined) {
         updateFields.push(`entregable = $${paramIndex++}`);
-        updateValues.splice(-1, 0, body.entregable);
+        updateValues.push(body.entregable);
       }
       if (body.categoria !== undefined) {
         updateFields.push(`categoria = $${paramIndex++}`);
-        updateValues.splice(-1, 0, body.categoria);
+        updateValues.push(body.categoria);
       }
       if (body.responsableId !== undefined) {
         updateFields.push(`responsable_id = $${paramIndex++}`);
-        updateValues.splice(-1, 0, body.responsableId);
+        updateValues.push(body.responsableId);
       }
       if (body.fechaLimite !== undefined) {
         updateFields.push(`fecha_limite = $${paramIndex++}`);
-        updateValues.splice(-1, 0, body.fechaLimite);
+        updateValues.push(body.fechaLimite);
       }
       if (body.prioridad !== undefined) {
         updateFields.push(`prioridad = $${paramIndex++}`);
-        updateValues.splice(-1, 0, body.prioridad);
+        updateValues.push(body.prioridad);
       }
       if (body.estado !== undefined) {
         updateFields.push(`estado = $${paramIndex++}`);
-        updateValues.splice(-1, 0, body.estado);
+        updateValues.push(body.estado);
       }
       if (body.progreso !== undefined) {
         updateFields.push(`progreso = $${paramIndex++}`);
-        updateValues.splice(-1, 0, body.progreso);
+        updateValues.push(body.progreso);
       }
       if (body.evidenciasRequeridas !== undefined) {
         updateFields.push(`evidencias_requeridas = $${paramIndex++}`);
-        updateValues.splice(-1, 0, body.evidenciasRequeridas);
+        updateValues.push(body.evidenciasRequeridas);
       }
       if (body.observaciones !== undefined) {
         updateFields.push(`observaciones = $${paramIndex++}`);
-        updateValues.splice(-1, 0, body.observaciones);
+        updateValues.push(body.observaciones);
       }
 
       // If acuerdoId is being updated, fetch the new marca_id from that acuerdo
@@ -2824,9 +2884,9 @@ const server = createServer(async (request, response) => {
         if (acuerdoResult.rows[0]) {
           const newMarcaId = acuerdoResult.rows[0].marca_id;
           updateFields.push(`acuerdo_id = $${paramIndex++}`);
-          updateValues.splice(-1, 0, body.acuerdoId);
+          updateValues.push(body.acuerdoId);
           updateFields.push(`marca_id = $${paramIndex++}`);
-          updateValues.splice(-1, 0, newMarcaId);
+          updateValues.push(newMarcaId);
         }
       }
 
@@ -2965,6 +3025,44 @@ const server = createServer(async (request, response) => {
     } catch (error) {
       console.error('Error getting evidencias:', error);
       sendJson(response, 500, { error: 'No fue posible obtener las evidencias.' });
+      return;
+    }
+  }
+
+  // GET /api/evidencias-alertas - Get evidencias in "En revisión" state (alerts)
+  if (request.method === 'GET' && request.url === '/api/evidencias-alertas') {
+    try {
+      const userId = request.headers['x-user-id'];
+      if (typeof userId !== 'string' || !userId) {
+        sendJson(response, 401, { error: 'Se requiere autenticación.' });
+        return;
+      }
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
+      if (!companiaId) {
+        sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
+        return;
+      }
+
+      const result = await pool.query(
+        `SELECT e.id, e.compromiso_id AS "compromisoId", e.estado,
+                TO_CHAR(e.fecha_creacion, 'YYYY-MM-DD HH24:MI') AS "fechaCreacion",
+                c.entregable, c.acuerdo_id AS "acuerdoId", c.responsable_id AS "responsableId",
+                a.nombre AS "acuerdoNombre", m.nombre AS "marcaNombre"
+         FROM evidencias e
+         LEFT JOIN compromisos c ON e.compromiso_id = c.id
+         LEFT JOIN acuerdos a ON c.acuerdo_id = a.id
+         LEFT JOIN marcas m ON a.marca_id = m.id
+         WHERE e.compania_id = $1 AND e.estado = 'En revisión'
+         ORDER BY e.fecha_creacion ASC`,
+        [companiaId]
+      );
+
+      sendJson(response, 200, result.rows);
+      return;
+    } catch (error) {
+      console.error('Error getting evidencias alertas:', error);
+      sendJson(response, 500, { error: 'No fue posible obtener las alertas de evidencias.' });
       return;
     }
   }
@@ -4229,7 +4327,7 @@ Responde a la siguiente pregunta en español de forma clara y concisa:
           END as cumplimiento
         FROM meses
         LEFT JOIN compromisos c ON
-          compania_id = $1
+          c.compania_id = $1
           AND EXTRACT(YEAR FROM c.fecha_limite) = EXTRACT(YEAR FROM meses.fecha)
           AND EXTRACT(MONTH FROM c.fecha_limite) = EXTRACT(MONTH FROM meses.fecha)
         GROUP BY meses.fecha, mes

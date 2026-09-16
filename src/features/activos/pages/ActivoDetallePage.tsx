@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { Pencil, Trash2, Package, MapPin, Users, Boxes, UsersRound, Image as ImageIcon, Download, FileText } from 'lucide-react';
+import { Pencil, Trash2, Package, MapPin, Users, Boxes, UsersRound, Image as ImageIcon, Download, FileText, ArrowLeft } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -79,6 +79,9 @@ export function ActivoDetallePage() {
         breadcrumbs={[{ label: 'Activos', to: '/activos' }, { label: activo.nombre }]}
         accion={
           <div className="flex gap-2">
+            <Button variante="secundario" icono={<ArrowLeft size={15} />} onClick={() => navigate('/activos')}>
+              Volver atrás
+            </Button>
             <Button variante="secundario" icono={<Pencil size={15} />} onClick={() => setModalAbierto(true)}>
               Editar
             </Button>
@@ -126,7 +129,7 @@ export function ActivoDetallePage() {
                   <Users size={16} className="mt-0.5 text-gray-400" />
                   <div>
                     <p className="text-xs text-gray-500">Alcance estimado</p>
-                    <p className="text-sm font-medium text-gray-900">{activo.alcanceEstimado}</p>
+                    <p className="text-sm font-medium text-gray-900">{formatNumber(parseInt(activo.alcanceEstimado || '0', 10))}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-2">

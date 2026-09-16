@@ -23,7 +23,7 @@ type Vista = 'tabla' | 'tarjetas';
 
 export function ActivosListPage() {
   const { t } = useLanguage();
-  const { activos, crearActivo } = useActivos();
+  const { activos, crearActivo, actualizarActivo } = useActivos();
   const { mostrarToast } = useToast();
   const sessionUser = getSessionUser();
 
@@ -35,6 +35,7 @@ export function ActivosListPage() {
   const [companiaNombre, setCompaniaNombre] = useState('');
   const [previewFotoAbierto, setPreviewFotoAbierto] = useState(false);
   const [fotoPreviewSeleccionada, setFotoPreviewSeleccionada] = useState<{ activoId: string; fotoId: string; nombre: string } | null>(null);
+  const [categoriasDisponibles, setCategoriasDisponibles] = useState<{ id: string; nombre: string }[]>([]);
 
   useEffect(() => {
     if (sessionUser?.companiaId) {
@@ -49,6 +50,18 @@ export function ActivosListPage() {
         .catch(() => setCompaniaNombre(''));
     }
   }, [sessionUser?.companiaId]);
+
+  useEffect(() => {
+    const headers = new Headers();
+    const auth = authHeaders();
+    Object.entries(auth).forEach(([key, value]) => {
+      if (value) headers.set(key, value);
+    });
+    fetch('/api/activo-categorias', { headers })
+      .then((res) => res.json())
+      .then((data: any) => setCategoriasDisponibles(data))
+      .catch(() => setCategoriasDisponibles([]));
+  }, []);
 
   const filtrados = useMemo(() => {
     return activos.filter((a) => {
@@ -68,6 +81,25 @@ export function ActivosListPage() {
       setModalAbierto(false);
     } catch (error) {
       mostrarToast('Error al crear el activo');
+    }
+  }
+
+  async function handleActualizarCampo(activoId: string, campo: string, nuevoValor: any) {
+    try {
+      const cambios: any = {};
+      // Para valoración, limpiar el formato y convertir a número
+      if (campo === 'valoracionCOP') {
+        const valor = typeof nuevoValor === 'string'
+          ? parseInt(nuevoValor.replace(/\D/g, ''), 10)
+          : nuevoValor;
+        cambios[campo] = valor;
+      } else {
+        cambios[campo] = nuevoValor;
+      }
+      await actualizarActivo(activoId, cambios);
+      mostrarToast('Activo actualizado');
+    } catch (error) {
+      mostrarToast('Error al actualizar');
     }
   }
 
@@ -213,14 +245,44 @@ export function ActivosListPage() {
                     </Link>
                     <p className="text-xs text-gray-500">{activo.canal}</p>
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{activo.categoriaNombre || 'Sin categoría'}</td>
-                  <td className="px-4 py-3 text-gray-600">{formatCurrency(activo.valoracionCOP)}</td>
+                  <td className="px-4 py-3">
+                    <select
+                      value={activo.categoriaId || ''}
+                      onChange={(e) => handleActualizarCampo(activo.id, 'categoriaId', e.target.value)}
+                      className="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-sm hover:border-brand-400 focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
+                    >
+                      {categoriasDisponibles.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-4 py-3">
+                    <input
+                      type="text"
+                      value={formatCurrency(activo.valoracionCOP || 0)}
+                      onChange={(e) => handleActualizarCampo(activo.id, 'valoracionCOP', e.target.value)}
+                      placeholder="$ 0"
+                      className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm hover:border-brand-400 focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
+                    />
+                  </td>
                   <td className="px-4 py-3 text-gray-600">
                     {activo.inventarioDisponible}/{activo.inventarioTotal}
                   </td>
                   <td className="px-4 py-3 text-gray-600">{companiaNombre}</td>
                   <td className="px-4 py-3">
-                    <Badge estado={activo.estado} />
+                    <select
+                      value={activo.estado || ''}
+                      onChange={(e) => handleActualizarCampo(activo.id, 'estado', e.target.value)}
+                      className="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-sm hover:border-brand-400 focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
+                    >
+                      {ESTADOS_ACTIVO.map((e) => (
+                        <option key={e} value={e}>
+                          {e}
+                        </option>
+                      ))}
+                    </select>
                   </td>
                 </tr>
               );
