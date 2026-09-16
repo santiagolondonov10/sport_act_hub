@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Pencil, Download, Eye, Settings } from 'lucide-react';
+import { Plus, Trash2, Pencil, Download, Eye, Settings, Download as DownloadIcon } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -52,7 +52,7 @@ const columnasDefault: ColumnasVisibles = {
 };
 
 export function MarcasListPage() {
-  const { marcas, eliminarMarca } = useMarcas();
+  const { marcas, eliminarMarca, crearMarca } = useMarcas();
   const { mostrarToast } = useToast();
   const [modalAbierto, setModalAbierto] = useState(false);
   const [marcaParaEditar, setMarcaParaEditar] = useState<string | null>(null);
@@ -60,6 +60,11 @@ export function MarcasListPage() {
   const [sectores, setSectores] = useState<Sector[]>([]);
   const [modalColumnasAbierto, setModalColumnasAbierto] = useState(false);
   const [columnasVisibles, setColumnasVisibles] = useState<ColumnasVisibles>(columnasDefault);
+  const [modalImportarAbierto, setModalImportarAbierto] = useState(false);
+  const [marcasGlobales, setMarcasGlobales] = useState<any[]>([]);
+  const [marcaSeleccionada, setMarcaSeleccionada] = useState<any | null>(null);
+  const [importando, setImportando] = useState(false);
+  const [busquedaMarcas, setBusquedaMarcas] = useState('');
 
   // Cargar configuración de columnas desde localStorage
   useEffect(() => {
@@ -124,15 +129,63 @@ export function MarcasListPage() {
     setModalAbierto(true);
   };
 
+  const handleAbrirModalImportar = async () => {
+    setModalImportarAbierto(true);
+    setBusquedaMarcas('');
+    try {
+      const headers = new Headers();
+      const auth = authHeaders();
+      Object.entries(auth).forEach(([key, value]) => {
+        if (value) headers.set(key, value);
+      });
+      const response = await fetch('/api/marcas/todas', { headers });
+      if (response.ok) {
+        const data = await response.json();
+        setMarcasGlobales(data);
+      } else {
+        mostrarToast('Error al cargar las marcas globales.');
+      }
+    } catch (error) {
+      mostrarToast('Error al cargar las marcas globales.');
+    }
+  };
+
+  const handleImportarMarca = async () => {
+    if (!marcaSeleccionada) return;
+    setImportando(true);
+    try {
+      await crearMarca({
+        nombre: marcaSeleccionada.nombre,
+        sectorId: marcaSeleccionada.sectorId,
+        tipoIdentificacion: marcaSeleccionada.tipoIdentificacion,
+        identificacion: marcaSeleccionada.identificacion,
+        rutNombre: marcaSeleccionada.rutNombre,
+      });
+      mostrarToast('Marca importada correctamente.');
+      setModalImportarAbierto(false);
+      setMarcaSeleccionada(null);
+      setMarcasGlobales([]);
+    } catch (error) {
+      mostrarToast('Error al importar la marca.');
+    } finally {
+      setImportando(false);
+    }
+  };
+
   return (
     <div>
       <PageHeader
         titulo="Marcas"
         descripcion="Directorio de marcas y patrocinadores potenciales."
         accion={
-          <Button variante="primario" icono={<Plus size={16} />} onClick={() => handleAbrirModal()}>
-            Nueva Marca
-          </Button>
+          <div className="flex gap-2">
+            <Button variante="secundario" icono={<DownloadIcon size={16} />} onClick={handleAbrirModalImportar}>
+              Consultar marcas creadas
+            </Button>
+            <Button variante="primario" icono={<Plus size={16} />} onClick={() => handleAbrirModal()}>
+              Nueva Marca
+            </Button>
+          </div>
         }
       />
 
@@ -349,6 +402,85 @@ export function MarcasListPage() {
               >
                 Cerrar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de importar marcas */}
+      {modalImportarAbierto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4">
+          <div className="w-full max-w-2xl rounded-xl border border-gray-200 bg-white shadow-lg">
+            <div className="border-b border-gray-200 px-6 py-4">
+              <h3 className="text-lg font-semibold text-gray-900">Importar marca</h3>
+              <p className="mt-1 text-sm text-gray-600">Selecciona una marca de la base de datos global para importarla a tu compañía.</p>
+            </div>
+
+            <div className="p-6">
+              {marcasGlobales.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-600">No hay marcas disponibles.</p>
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="text"
+                    placeholder="Buscar por nombre o identificación..."
+                    value={busquedaMarcas}
+                    onChange={(e) => setBusquedaMarcas(e.target.value)}
+                    className="mb-4 w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
+                  />
+                  <div className="max-h-96 space-y-1 overflow-y-auto">
+                    {marcasGlobales
+                      .filter(
+                        (marca) =>
+                          marca.nombre.toLowerCase().includes(busquedaMarcas.toLowerCase()) ||
+                          marca.identificacion.toLowerCase().includes(busquedaMarcas.toLowerCase())
+                      )
+                      .map((marca) => (
+                    <div
+                      key={marca.id}
+                      onClick={() => setMarcaSeleccionada(marcaSeleccionada?.id === marca.id ? null : marca)}
+                      className={`rounded border px-3 py-2 cursor-pointer transition-colors flex items-center justify-between ${
+                        marcaSeleccionada?.id === marca.id
+                          ? 'border-brand-600 bg-brand-50'
+                          : 'border-gray-200 bg-white hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-900">{marca.nombre}</p>
+                        <p className="text-xs text-gray-500">{marca.tipoIdentificacion} {marca.identificacion}</p>
+                      </div>
+                      <input
+                        type="radio"
+                        checked={marcaSeleccionada?.id === marca.id}
+                        onChange={() => setMarcaSeleccionada(marca)}
+                        className="h-4 w-4 text-brand-600 ml-2"
+                      />
+                    </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="border-t border-gray-200 bg-gray-50 px-6 py-4 flex gap-2 justify-end">
+              <button
+                onClick={() => {
+                  setModalImportarAbierto(false);
+                  setMarcaSeleccionada(null);
+                }}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                Cancelar
+              </button>
+              <Button
+                variante="primario"
+                disabled={!marcaSeleccionada || importando}
+                onClick={handleImportarMarca}
+              >
+                {importando ? 'Importando...' : 'Importar'}
+              </Button>
             </div>
           </div>
         </div>

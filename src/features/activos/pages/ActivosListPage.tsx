@@ -5,7 +5,6 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { StatCard } from '@/components/shared/StatCard';
 import { SearchInput } from '@/components/shared/SearchInput';
 import { FilterSelect } from '@/components/shared/FilterSelect';
-import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useLanguage } from '@/lib/LanguageContext';

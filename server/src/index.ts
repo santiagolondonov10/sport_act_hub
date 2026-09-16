@@ -1813,6 +1813,34 @@ const server = createServer(async (request, response) => {
     }
   }
 
+  // GET /api/marcas/todas - Get all marcas across all companies
+  if (request.method === 'GET' && request.url === '/api/marcas/todas') {
+    try {
+      const userId = request.headers['x-user-id'];
+      if (typeof userId !== 'string' || !userId) {
+        sendJson(response, 401, { error: 'Se requiere autenticación.' });
+        return;
+      }
+      const result = await pool.query(
+        `SELECT DISTINCT id, nombre, tipo_identificacion AS "tipoIdentificacion", identificacion,
+                rut_nombre_archivo AS "rutNombre", sector_id AS "sectorId", persona_contacto_1 AS "personaContacto1",
+                telefono_contacto_1 AS "telefonoContacto1", correo_contacto_1 AS "correoContacto1", cargo_contacto_1 AS "cargoContacto1",
+                persona_contacto_2 AS "personaContacto2", telefono_contacto_2 AS "telefonoContacto2",
+                correo_contacto_2 AS "correoContacto2", cargo_contacto_2 AS "cargoContacto2", persona_contacto_3 AS "personaContacto3",
+                telefono_contacto_3 AS "telefonoContacto3", correo_contacto_3 AS "correoContacto3", cargo_contacto_3 AS "cargoContacto3",
+                contactar_por_whatsapp AS "contactarPorWhatsapp", contactar_por_correo AS "contactarPorCorreo",
+                creado_por AS "creadoPor", actualizado_por AS "actualizadoPor",
+                created_at AS "createdAt", updated_at AS "updatedAt", compania_id AS "companiaId"
+         FROM marcas ORDER BY nombre ASC`
+      );
+      sendJson(response, 200, result.rows);
+      return;
+    } catch (error) {
+      sendJson(response, 500, { error: 'No fue posible obtener las marcas globales.' });
+      return;
+    }
+  }
+
   // POST /api/marcas - Create a new marca
   if (request.method === 'POST' && request.url === '/api/marcas') {
     try {
