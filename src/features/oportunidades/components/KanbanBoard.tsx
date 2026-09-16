@@ -31,7 +31,7 @@ export function KanbanBoard({ oportunidades, onCambiarEtapa }: KanbanBoardProps)
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <div className="flex gap-3 overflow-x-auto pb-2">
+      <div className="flex gap-3 pb-2">
         {ETAPAS_OPORTUNIDAD.map((etapa) => (
           <KanbanColumn
             key={etapa}

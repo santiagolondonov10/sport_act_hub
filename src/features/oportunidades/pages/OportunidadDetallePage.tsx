@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { Pencil, Trash2, Target, Mail, Phone, User, Package, Download, FileText, Plus, AlertCircle, Edit2 } from 'lucide-react';
+import { Pencil, Trash2, Target, Mail, Phone, User, Package, Download, FileText, Plus, AlertCircle, Edit2, ArrowLeft } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -187,6 +187,9 @@ export function OportunidadDetallePage() {
         breadcrumbs={[{ label: 'Oportunidades', to: '/oportunidades' }, { label: marca?.nombre ?? '' }]}
         accion={
           <div className="flex gap-2">
+            <Button variante="secundario" icono={<ArrowLeft size={15} />} onClick={() => navigate('/oportunidades')}>
+              Volver atrás
+            </Button>
             <Button variante="secundario" icono={<Pencil size={15} />} onClick={() => setModalAbierto(true)}>
               Editar
             </Button>

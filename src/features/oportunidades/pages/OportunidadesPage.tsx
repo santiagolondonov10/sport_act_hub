@@ -160,7 +160,12 @@ export function OportunidadesPage() {
               {filtradas.map((o) => {
                 const marca = marcas.find((m) => m.id === o.marcaId);
                 return (
-                  <OportunidadTableRow key={o.id} oportunidad={o} marcaNombre={marca?.nombre ?? 'Sin marca'} />
+                  <OportunidadTableRow
+                    key={o.id}
+                    oportunidad={o}
+                    marcaNombre={marca?.nombre ?? 'Sin marca'}
+                    onCambiarEtapa={(etapa) => handleCambiarEtapa(o.id, etapa)}
+                  />
                 );
               })}
             </tbody>

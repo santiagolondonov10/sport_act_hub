@@ -1,16 +1,17 @@
 import { Link } from 'react-router-dom';
-import { Badge } from '@/components/ui/Badge';
 import { formatCOP, formatFechaLarga } from '@/lib/format';
 import { getResponsable } from '@/data';
 import { useNotificacionLogs } from '@/hooks/useNotificacionLogs';
+import { ETAPAS_OPORTUNIDAD } from '@/types';
 import type { Oportunidad } from '@/types';
 
 interface OportunidadTableRowProps {
   oportunidad: Oportunidad;
   marcaNombre: string;
+  onCambiarEtapa: (etapa: Oportunidad['etapa']) => void;
 }
 
-export function OportunidadTableRow({ oportunidad, marcaNombre }: OportunidadTableRowProps) {
+export function OportunidadTableRow({ oportunidad, marcaNombre, onCambiarEtapa }: OportunidadTableRowProps) {
   const responsable = getResponsable(oportunidad.responsableId);
   const { ultimaNotificacion } = useNotificacionLogs('oportunidad', oportunidad.id);
 
@@ -22,7 +23,17 @@ export function OportunidadTableRow({ oportunidad, marcaNombre }: OportunidadTab
         </Link>
       </td>
       <td className="px-4 py-3">
-        <Badge estado={oportunidad.etapa} />
+        <select
+          value={oportunidad.etapa}
+          onChange={(e) => onCambiarEtapa(e.target.value as Oportunidad['etapa'])}
+          className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 hover:border-brand-400 focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600 cursor-pointer"
+        >
+          {ETAPAS_OPORTUNIDAD.map((etapa) => (
+            <option key={etapa} value={etapa}>
+              {etapa}
+            </option>
+          ))}
+        </select>
       </td>
       <td className="px-4 py-3 text-gray-600">{formatCOP(oportunidad.valorEstimadoCOP)}</td>
       <td className="px-4 py-3 text-gray-600">{responsable?.nombre}</td>

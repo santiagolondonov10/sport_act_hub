@@ -117,21 +117,23 @@ export function OportunidadCard({ oportunidad, onCambiarEtapa }: OportunidadCard
         {formatFecha(oportunidad.fechaEstimadaCierre)}
       </div>
 
-      <div className="flex items-center justify-between gap-2">
-        <span
-          className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-semibold text-white bg-brand-600"
-          title={oportunidad.responsableId}
-        >
-          {iniciales(oportunidad.responsableId)}
-        </span>
-        <label className="sr-only" htmlFor={`etapa-${oportunidad.id}`}>
-          Cambiar etapa de {marca?.nombre}
-        </label>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <span
+            className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-semibold text-white bg-brand-600"
+            title={oportunidad.responsableId}
+          >
+            {iniciales(oportunidad.responsableId)}
+          </span>
+          <label className="sr-only" htmlFor={`etapa-${oportunidad.id}`}>
+            Cambiar etapa de {marca?.nombre}
+          </label>
+        </div>
         <select
           id={`etapa-${oportunidad.id}`}
           value={oportunidad.etapa}
           onChange={(e) => onCambiarEtapa(e.target.value as Oportunidad['etapa'])}
-          className="rounded-md border border-gray-200 bg-gray-50 px-1.5 py-1 text-xs text-gray-600 focus:border-brand-800 focus:outline-none"
+          className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 hover:border-brand-400 focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600 cursor-pointer"
         >
           {ETAPAS_OPORTUNIDAD.map((etapa) => (
             <option key={etapa} value={etapa}>

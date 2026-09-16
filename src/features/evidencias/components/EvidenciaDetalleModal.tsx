@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Download, Edit2, X, Send } from 'lucide-react';
+import { Download, Edit2, X, Send, Trash2 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -17,11 +17,12 @@ interface EvidenciaDetalleModalProps {
   onCerrar: () => void;
   onEditar?: (evidencia: Evidencia) => void;
   onSolicitarRevision?: () => void;
+  onEliminar?: (id: string) => void;
 }
 
 const TIPOS_IMAGEN = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
-export function EvidenciaDetalleModal({ evidencia, onCerrar, onEditar, onSolicitarRevision }: EvidenciaDetalleModalProps) {
+export function EvidenciaDetalleModal({ evidencia, onCerrar, onEditar, onSolicitarRevision, onEliminar }: EvidenciaDetalleModalProps) {
   const [imagenAmpliada, setImagenAmpliada] = useState<{ nombre: string; tipo: string; datos: string } | null>(null);
   const { acuerdos } = useAcuerdos();
   const { marcas } = useMarcas();
@@ -160,6 +161,21 @@ export function EvidenciaDetalleModal({ evidencia, onCerrar, onEditar, onSolicit
                 className="flex-1"
               >
                 Solicitar revisión
+              </Button>
+            )}
+            {onEliminar && (
+              <Button
+                variante="peligro"
+                icono={<Trash2 size={15} />}
+                onClick={() => {
+                  if (confirm('¿Estás seguro de que quieres eliminar esta evidencia?')) {
+                    onEliminar(evidencia.id);
+                    onCerrar();
+                  }
+                }}
+                className="flex-1"
+              >
+                Eliminar
               </Button>
             )}
           </div>

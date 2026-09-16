@@ -8,6 +8,7 @@ interface EvidenciasContextValue {
   crearEvidencia: (nueva: Omit<Evidencia, 'id' | 'estado'> & { archivos?: Array<{ nombre: string; tipo: string; datos: string }> }) => Promise<Evidencia>;
   actualizarEvidencia: (id: string, updates: Partial<Omit<Evidencia, 'id' | 'estado'>> & { archivos?: Array<{ nombre: string; tipo: string; datos: string }> }) => Promise<Evidencia>;
   cambiarEstado: (id: string, estado: EstadoEvidencia) => Promise<void>;
+  eliminarEvidencia: (id: string) => Promise<void>;
   loading: boolean;
 }
 
@@ -122,6 +123,20 @@ export function EvidenciasProvider({ children }: { children: ReactNode }) {
     setEvidencias((prev) => prev.map((e) => (e.id === id ? evidencia : e)));
   }
 
+  async function eliminarEvidencia(id: string) {
+    const headers = new Headers();
+    const auth = authHeaders();
+    Object.entries(auth).forEach(([key, value]) => {
+      if (value) headers.set(key, value);
+    });
+    const response = await fetch(`/api/evidencias/${id}`, {
+      method: 'DELETE',
+      headers,
+    });
+    if (!response.ok) throw new Error('No fue posible eliminar la evidencia.');
+    setEvidencias((prev) => prev.filter((e) => e.id !== id));
+  }
+
   return (
     <EvidenciasContext.Provider
       value={{
@@ -129,6 +144,7 @@ export function EvidenciasProvider({ children }: { children: ReactNode }) {
         crearEvidencia,
         actualizarEvidencia,
         cambiarEstado,
+        eliminarEvidencia,
         loading,
       }}
     >

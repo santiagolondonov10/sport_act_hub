@@ -16,7 +16,7 @@ export function KanbanColumn({ etapa, oportunidades, onCambiarEtapa }: KanbanCol
   const valorTotal = oportunidades.reduce((total, o) => total + (o.valorEstimadoCOP || 0), 0);
 
   return (
-    <div className="flex w-72 shrink-0 flex-col rounded-xl bg-gray-100/70">
+    <div className="flex min-w-64 flex-1 flex-col rounded-xl bg-gray-100/70">
       <div className="flex items-center justify-between px-3 pt-3">
         <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${estilo.clases}`}>
           <span className={`h-1.5 w-1.5 rounded-full ${estilo.punto}`} />

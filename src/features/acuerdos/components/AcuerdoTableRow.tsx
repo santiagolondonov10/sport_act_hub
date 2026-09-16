@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, Pencil, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { Button } from '@/components/ui/Button';
@@ -15,9 +15,11 @@ interface AcuerdoTableRowProps {
   marcaNombre?: string;
   enviandoAlerta?: string | null;
   onEnviarAlerta?: (id: string) => void;
+  onEditar?: (id: string) => void;
+  onEliminar?: (id: string) => void;
 }
 
-export function AcuerdoTableRow({ acuerdo, marcaNombre, enviandoAlerta, onEnviarAlerta }: AcuerdoTableRowProps) {
+export function AcuerdoTableRow({ acuerdo, marcaNombre, enviandoAlerta, onEnviarAlerta, onEditar, onEliminar }: AcuerdoTableRowProps) {
   const cumplimiento = getCumplimientoPorAcuerdo(acuerdo.id);
   const tiempoConsumido = getTiempoConsumidoPorAcuerdo(acuerdo.fechaInicio, acuerdo.fechaFin);
   const mostrarBotonAlerta = tiempoConsumido > 80;
@@ -25,6 +27,31 @@ export function AcuerdoTableRow({ acuerdo, marcaNombre, enviandoAlerta, onEnviar
 
   return (
     <tr className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60">
+      <td className="px-4 py-3">
+        <div className="flex gap-2">
+          {onEditar && (
+            <button
+              onClick={() => onEditar(acuerdo.id)}
+              className="text-gray-600 hover:text-brand-800 transition-colors"
+              title="Editar"
+            >
+              <Pencil size={16} />
+            </button>
+          )}
+          {onEliminar && (
+            <button
+              onClick={async () => {
+                if (!confirm('¿Estás seguro de que quieres eliminar este acuerdo?')) return;
+                onEliminar(acuerdo.id);
+              }}
+              className="text-gray-600 hover:text-red-600 transition-colors"
+              title="Eliminar"
+            >
+              <Trash2 size={16} />
+            </button>
+          )}
+        </div>
+      </td>
       <td className="px-4 py-3">
         <Link to={`/acuerdos/${acuerdo.id}`} className="font-medium text-gray-900 hover:text-brand-800 hover:underline">
           {acuerdo.nombre}

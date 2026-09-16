@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { CheckCircle2, FileSignature, Mail, Phone, RefreshCcw, User, Pencil, Trash2, Plus, AlertCircle } from 'lucide-react';
+import { CheckCircle2, FileSignature, Mail, Phone, RefreshCcw, User, Pencil, Trash2, Plus, AlertCircle, ArrowLeft } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -140,6 +140,13 @@ export function AcuerdoDetallePage() {
                 {enviandoAlerta ? 'Enviando...' : 'Enviar Alerta'}
               </Button>
             )}
+            <Button
+              variante="secundario"
+              icono={<ArrowLeft size={15} />}
+              onClick={() => navigate('/acuerdos')}
+            >
+              Volver atrás
+            </Button>
             <Button
               variante="secundario"
               icono={<Pencil size={15} />}

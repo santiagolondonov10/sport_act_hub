@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/useToast';
 import { useMarcas } from '@/features/marcas/store';
 import { useAcuerdos } from '../store';
 import { formatCurrency } from '@/lib/formatters';
+import { authHeaders, getSessionUser } from '@/lib/auth';
 
 interface EditarAcuerdoModalProps {
   abierto: boolean;
@@ -20,6 +21,7 @@ export function EditarAcuerdoModal({ abierto, onCerrar, acuerdo, onAcuerdoActual
   const { actualizarAcuerdo } = useAcuerdos();
   const [guardando, setGuardando] = useState(false);
   const [activosSeleccionados, setActivosSeleccionados] = useState<string[]>(acuerdo.activosIncluidosIds || []);
+  const [companiaNombre, setCompaniaNombre] = useState('');
 
   const [formularioAcuerdo, setFormularioAcuerdo] = useState({
     nombre: acuerdo.nombre,
@@ -49,6 +51,27 @@ export function EditarAcuerdoModal({ abierto, onCerrar, acuerdo, onAcuerdoActual
         notasRenovacion: acuerdo.notasRenovacion,
         interesRenovacion: acuerdo.interesRenovacion,
       });
+
+      const cargarCompania = async () => {
+        try {
+          const sessionUser = getSessionUser();
+          if (sessionUser?.companiaId) {
+            const headers = new Headers();
+            const auth = authHeaders();
+            Object.entries(auth).forEach(([key, value]) => {
+              if (value) headers.set(key, value);
+            });
+            const response = await fetch(`/api/admin/companias/${sessionUser.companiaId}`, { headers });
+            if (response.ok) {
+              const data = await response.json();
+              setCompaniaNombre(data.nombre || '');
+            }
+          }
+        } catch (error) {
+          console.error('Error loading company:', error);
+        }
+      };
+      cargarCompania();
     }
   }, [abierto, acuerdo]);
 
@@ -143,7 +166,7 @@ export function EditarAcuerdoModal({ abierto, onCerrar, acuerdo, onAcuerdoActual
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Responsable *</label>
+          <label className="block text-sm font-medium text-gray-700">Responsable interno {companiaNombre && `(${companiaNombre})`}</label>
           <input
             type="text"
             name="responsableId"

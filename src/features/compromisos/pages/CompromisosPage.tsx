@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { AlarmClock, CheckCircle2, ClipboardList, TriangleAlert } from 'lucide-react';
+import { AlarmClock, CheckCircle2, ClipboardList, TriangleAlert, Pencil, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { StatCard } from '@/components/shared/StatCard';
 import { SearchInput } from '@/components/shared/SearchInput';
@@ -109,6 +109,7 @@ export function CompromisosPage() {
           <table className="w-full min-w-[920px] text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/60 text-left text-xs uppercase tracking-wide text-gray-500">
+                <th className="px-4 py-3 font-medium">Acciones</th>
                 <th className="px-4 py-3 font-medium">{t('table.entregable')}</th>
                 <th className="px-4 py-3 font-medium">{t('table.marca')}</th>
                 <th className="px-4 py-3 font-medium">{t('table.responsable')}</th>
@@ -125,10 +126,39 @@ export function CompromisosPage() {
                 return (
                   <tr
                     key={c.id}
-                    onClick={() => setSeleccionado(c)}
-                    className="cursor-pointer border-b border-gray-50 last:border-0 hover:bg-gray-50/60"
+                    className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60"
                   >
-                    <td className="max-w-[240px] px-4 py-3">
+                    <td className="px-4 py-3">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            setCompromisoEditando(c);
+                            setModalEditarAbierto(true);
+                          }}
+                          className="text-gray-600 hover:text-brand-800 transition-colors"
+                          title="Editar"
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (!confirm('¿Estás seguro de que quieres eliminar este compromiso?')) return;
+                            try {
+                              await eliminarCompromiso(c.id);
+                              mostrarToast('Compromiso eliminado correctamente.');
+                              setSeleccionado(null);
+                            } catch (error) {
+                              mostrarToast(error instanceof Error ? error.message : 'Error al eliminar el compromiso.');
+                            }
+                          }}
+                          className="text-gray-600 hover:text-red-600 transition-colors"
+                          title="Eliminar"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                    <td className="max-w-[240px] px-4 py-3 cursor-pointer" onClick={() => setSeleccionado(c)}>
                       <p className="truncate font-medium text-gray-900">{c.entregable}</p>
                       <p className="truncate text-xs text-gray-500">{c.categoria}</p>
                     </td>

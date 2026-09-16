@@ -13,17 +13,19 @@ import type { EstadoAcuerdo } from '@/types';
 import { useAcuerdos } from '../store';
 import { useMarcas } from '@/features/marcas/store';
 import { AcuerdoTableRow } from '../components/AcuerdoTableRow';
+import { EditarAcuerdoModal } from '../components/EditarAcuerdoModal';
 
 const ESTADOS: EstadoAcuerdo[] = ['Borrador', 'Activo', 'Próximo a vencer', 'Finalizado', 'Cancelado'];
 
 export function AcuerdosListPage() {
   const { t } = useLanguage();
   const { mostrarToast } = useToast();
-  const { acuerdos } = useAcuerdos();
+  const { acuerdos, eliminarAcuerdo } = useAcuerdos();
   const { marcas } = useMarcas();
   const [busqueda, setBusqueda] = useState('');
   const [estado, setEstado] = useState('todos');
   const [enviandoAlerta, setEnviandoAlerta] = useState<string | null>(null);
+  const [acuerdoEditando, setAcuerdoEditando] = useState<string | null>(null);
 
   async function handleEnviarAlerta(acuerdoId: string) {
     if (!confirm('¿Deseas enviar una alerta de vencimiento a la marca y al responsable interno?')) return;
@@ -48,6 +50,15 @@ export function AcuerdosListPage() {
       mostrarToast(error instanceof Error ? error.message : 'Error al enviar la alerta.');
     } finally {
       setEnviandoAlerta(null);
+    }
+  }
+
+  async function handleEliminar(acuerdoId: string) {
+    try {
+      await eliminarAcuerdo(acuerdoId);
+      mostrarToast('Acuerdo eliminado correctamente.');
+    } catch (error) {
+      mostrarToast(error instanceof Error ? error.message : 'Error al eliminar el acuerdo.');
     }
   }
 
@@ -103,6 +114,7 @@ export function AcuerdosListPage() {
           <table className="w-full min-w-[820px] text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/60 text-left text-xs uppercase tracking-wide text-gray-500">
+                <th className="px-4 py-3 font-medium">Acciones</th>
                 <th className="px-4 py-3 font-medium">{t('table.acuerdo')}</th>
                 <th className="px-4 py-3 font-medium">{t('table.marca')}</th>
                 <th className="px-4 py-3 font-medium">{t('table.valor')}</th>
@@ -111,7 +123,6 @@ export function AcuerdosListPage() {
                 <th className="px-4 py-3 font-medium">{t('table.cumplimiento')}</th>
                 <th className="px-4 py-3 font-medium">{t('table.estado')}</th>
                 <th className="px-4 py-3 font-medium">Última notificación</th>
-                <th className="px-4 py-3 font-medium text-center">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -124,12 +135,22 @@ export function AcuerdosListPage() {
                     marcaNombre={marca?.nombre}
                     enviandoAlerta={enviandoAlerta}
                     onEnviarAlerta={handleEnviarAlerta}
+                    onEditar={() => setAcuerdoEditando(acuerdo.id)}
+                    onEliminar={handleEliminar}
                   />
                 );
               })}
             </tbody>
           </table>
         </div>
+      )}
+
+      {acuerdoEditando && (
+        <EditarAcuerdoModal
+          abierto={true}
+          onCerrar={() => setAcuerdoEditando(null)}
+          acuerdo={acuerdos.find((a) => a.id === acuerdoEditando)!}
+        />
       )}
     </div>
   );

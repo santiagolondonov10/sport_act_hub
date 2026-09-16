@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { TextField, TextAreaField, SelectField } from '@/components/ui/Field';
 import { ESTADOS_COMPROMISO } from '@/types';
 import type { Compromiso, CategoriaCompromiso } from '@/types';
+import { authHeaders, getSessionUser } from '@/lib/auth';
 
 const PRIORIDADES = ['Baja', 'Media', 'Alta', 'Urgente'] as const;
 const CATEGORIAS: CategoriaCompromiso[] = [
@@ -37,6 +38,7 @@ export function CompromisoFormModal({ abierto, onCerrar, onGuardar, acuerdoId, m
   const [progreso, setProgreso] = useState(compromisoInicial?.progreso ?? 0);
   const [evidenciasRequeridas, setEvidenciasRequeridas] = useState<number | string>(compromisoInicial?.evidenciasRequeridas ?? '');
   const [observaciones, setObservaciones] = useState(compromisoInicial?.observaciones ?? '');
+  const [companiaNombre, setCompaniaNombre] = useState('');
 
   // Reset form when modal opens/closes or compromisoInicial changes
   useEffect(() => {
@@ -63,6 +65,31 @@ export function CompromisoFormModal({ abierto, onCerrar, onGuardar, acuerdoId, m
       setObservaciones('');
     }
   }, [abierto, compromisoInicial]);
+
+  useEffect(() => {
+    if (abierto) {
+      const cargarCompania = async () => {
+        try {
+          const sessionUser = getSessionUser();
+          if (sessionUser?.companiaId) {
+            const headers = new Headers();
+            const auth = authHeaders();
+            Object.entries(auth).forEach(([key, value]) => {
+              if (value) headers.set(key, value);
+            });
+            const response = await fetch(`/api/admin/companias/${sessionUser.companiaId}`, { headers });
+            if (response.ok) {
+              const data = await response.json();
+              setCompaniaNombre(data.nombre || '');
+            }
+          }
+        } catch (error) {
+          console.error('Error loading company:', error);
+        }
+      };
+      cargarCompania();
+    }
+  }, [abierto]);
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -140,7 +167,7 @@ export function CompromisoFormModal({ abierto, onCerrar, onGuardar, acuerdoId, m
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <TextField
-            label="Responsable"
+            label={`Responsable interno ${companiaNombre ? `(${companiaNombre})` : ''}`}
             value={responsableId}
             onChange={(e) => setResponsableId(e.target.value)}
             placeholder="Nombre del responsable"

@@ -28,7 +28,7 @@ const ESTADOS: EstadoEvidencia[] = ['En revisión', 'Aprobada', 'Rechazada'];
 
 export function EvidenciasPage() {
   const { t } = useLanguage();
-  const { evidencias, crearEvidencia, actualizarEvidencia, cambiarEstado } = useEvidencias();
+  const { evidencias, crearEvidencia, actualizarEvidencia, cambiarEstado, eliminarEvidencia } = useEvidencias();
   const { acuerdos } = useAcuerdos();
   const { marcas } = useMarcas();
   const { compromisos } = useCompromisos();
@@ -91,6 +91,16 @@ export function EvidenciasPage() {
     cambiarEstado(id, nuevoEstado);
     mostrarToast(nuevoEstado === 'Aprobada' ? t('message.evidenciaAprobada') : t('message.evidenciaRechazada'), nuevoEstado === 'Aprobada' ? 'exito' : 'error');
     setSeleccionada(null);
+  }
+
+  async function handleEliminar(id: string) {
+    try {
+      await eliminarEvidencia(id);
+      mostrarToast('Evidencia eliminada correctamente.');
+      setSeleccionada(null);
+    } catch (error) {
+      mostrarToast(error instanceof Error ? error.message : 'Error al eliminar la evidencia.', 'error');
+    }
   }
 
   async function handleSolicitarRevision(evidenciaId: string) {
@@ -236,6 +246,7 @@ export function EvidenciasPage() {
             handleSolicitarRevision(seleccionada.id);
           }
         }}
+        onEliminar={handleEliminar}
       />
     </div>
   );
