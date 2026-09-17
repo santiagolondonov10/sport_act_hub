@@ -508,7 +508,7 @@ function ActivoDetalleModal({ activo, onCerrar }: { activo: Activo; onCerrar: ()
             </div>
             <div>
               <p className="text-xs font-medium text-gray-500 uppercase">Categoría</p>
-              <p className="mt-1 text-sm font-semibold text-gray-900">{activo.categoriaId || '-'}</p>
+              <p className="mt-1 text-sm font-semibold text-gray-900">{activo.categoriaNombre || activo.categoriaId || '-'}</p>
             </div>
             <div>
               <p className="text-xs font-medium text-gray-500 uppercase">Valoración</p>
