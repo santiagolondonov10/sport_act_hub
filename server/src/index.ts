@@ -8,7 +8,7 @@ import { config } from 'dotenv';
 import * as XLSX from 'xlsx';
 import cron from 'node-cron';
 import { pool } from './db.js';
-import { sendOportunidadStatusEmail, sendAcuerdoProximoAVencerEmail, sendEvidenciaAprobacionEmail } from './emailService.js';
+import { sendOportunidadStatusEmail, sendAcuerdoProximoAVencerEmail, sendEvidenciaAprobacionEmail, sendEvidenciaResultadoEmail } from './emailService.js';
 
 // Load environment variables from .env file
 config();
@@ -3279,19 +3279,76 @@ const server = createServer(async (request, response) => {
     try {
       const evidenciaId = request.url.split('/')[3];
 
+      // Get evidencia details first
+      const evidenciaResult = await pool.query(
+        `SELECT e.id, e.titulo, e.acuerdo_id, c.entregable
+         FROM evidencias e
+         LEFT JOIN compromisos c ON e.compromiso_id = c.id
+         WHERE e.id = $1`,
+        [evidenciaId]
+      );
+
+      if (evidenciaResult.rowCount === 0) {
+        response.writeHead(404, { 'Content-Type': 'text/html' });
+        response.end('<h1>Evidencia no encontrada</h1>');
+        return;
+      }
+
+      const evidencia = evidenciaResult.rows[0];
+
+      // Update evidencia state
       const result = await pool.query(
         `UPDATE evidencias SET estado = 'Aprobada' WHERE id = $1
          RETURNING id, titulo, estado`,
         [evidenciaId]
       );
 
-      if (result.rowCount === 0) {
-        response.writeHead(404, { 'Content-Type': 'text/html' });
-        response.end('<h1>Evidencia no encontrada</h1>');
-        return;
-      }
-
       console.log(`✅ Evidencia ${evidenciaId} aprobada desde email`);
+
+      // Send email to responsable interno (non-blocking)
+      if (evidencia.acuerdo_id) {
+        // Fire and forget - don't wait for email to complete
+        (async () => {
+          try {
+            const acuerdoResult = await pool.query(
+              `SELECT nombre, responsable_correo FROM acuerdos WHERE id = $1`,
+              [evidencia.acuerdo_id]
+            );
+
+            if (acuerdoResult.rowCount > 0) {
+              const acuerdo = acuerdoResult.rows[0];
+
+              if (acuerdo.responsable_correo) {
+                await sendEvidenciaResultadoEmail(
+                  { nombre: 'Responsable Interno', email: acuerdo.responsable_correo },
+                  {
+                    titulo: evidencia.titulo,
+                    acuerdoNombre: acuerdo.nombre,
+                    compromisoDatos: evidencia.entregable || 'Sin especificar',
+                  },
+                  'aprobada'
+                );
+
+                // Log notificación
+                await pool.query(
+                  `INSERT INTO notificacion_logs (id, entity_type, entity_id, recipient_email, recipient_name, message)
+                   VALUES ($1, $2, $3, $4, $5, $6)`,
+                  [
+                    randomUUID(),
+                    'evidencia',
+                    evidenciaId,
+                    acuerdo.responsable_correo,
+                    'Responsable Interno',
+                    `Notificación: Evidencia aprobada - ${evidencia.titulo}`,
+                  ]
+                );
+              }
+            }
+          } catch (emailError) {
+            console.error('❌ Error enviando notificación de aprobación:', emailError);
+          }
+        })();
+      }
 
       // Show success page
       const htmlContent = `
@@ -3622,6 +3679,15 @@ const server = createServer(async (request, response) => {
       const evidenciaId = request.url.split('/')[3];
       const body = await readJson(request) as any;
 
+      // Get evidencia data first
+      const evidenciaPreResult = await pool.query(
+        `SELECT e.titulo, e.acuerdo_id, c.entregable
+         FROM evidencias e
+         LEFT JOIN compromisos c ON e.compromiso_id = c.id
+         WHERE e.id = $1`,
+        [evidenciaId]
+      );
+
       const result = await pool.query(
         `UPDATE evidencias SET estado = 'Aprobada', observaciones = $1 WHERE id = $2
          RETURNING id, compromiso_id AS "compromisoId", acuerdo_id AS "acuerdoId", tipo, titulo, descripcion,
@@ -3636,6 +3702,56 @@ const server = createServer(async (request, response) => {
       }
 
       console.log(`✅ Evidencia ${evidenciaId} aprobada`);
+
+      // Send email to responsable interno (non-blocking)
+      if (evidenciaPreResult.rowCount > 0) {
+        const evidencia = evidenciaPreResult.rows[0];
+
+        if (evidencia.acuerdo_id) {
+          // Fire and forget - don't wait for email to complete
+          (async () => {
+            try {
+              const acuerdoResult = await pool.query(
+                `SELECT nombre, responsable_correo FROM acuerdos WHERE id = $1`,
+                [evidencia.acuerdo_id]
+              );
+
+              if (acuerdoResult.rowCount > 0) {
+                const acuerdo = acuerdoResult.rows[0];
+
+                if (acuerdo.responsable_correo) {
+                  await sendEvidenciaResultadoEmail(
+                    { nombre: 'Responsable Interno', email: acuerdo.responsable_correo },
+                    {
+                      titulo: evidencia.titulo,
+                      acuerdoNombre: acuerdo.nombre,
+                      compromisoDatos: evidencia.entregable || 'Sin especificar',
+                    },
+                    'aprobada'
+                  );
+
+                  // Log notificación
+                  await pool.query(
+                    `INSERT INTO notificacion_logs (id, entity_type, entity_id, recipient_email, recipient_name, message)
+                     VALUES ($1, $2, $3, $4, $5, $6)`,
+                    [
+                      randomUUID(),
+                      'evidencia',
+                      evidenciaId,
+                      acuerdo.responsable_correo,
+                      'Responsable Interno',
+                      `Notificación: Evidencia aprobada - ${evidencia.titulo}`,
+                    ]
+                  );
+                }
+              }
+            } catch (emailError) {
+              console.error('❌ Error enviando notificación de aprobación:', emailError);
+            }
+          })();
+        }
+      }
+
       sendJson(response, 200, result.rows[0]);
       return;
     } catch (error) {
@@ -3656,6 +3772,15 @@ const server = createServer(async (request, response) => {
         return;
       }
 
+      // Get evidencia data first
+      const evidenciaPreResult = await pool.query(
+        `SELECT e.titulo, e.acuerdo_id, c.entregable
+         FROM evidencias e
+         LEFT JOIN compromisos c ON e.compromiso_id = c.id
+         WHERE e.id = $1`,
+        [evidenciaId]
+      );
+
       const result = await pool.query(
         `UPDATE evidencias SET estado = 'Rechazada', observaciones = $1 WHERE id = $2
          RETURNING id, compromiso_id AS "compromisoId", acuerdo_id AS "acuerdoId", tipo, titulo, descripcion,
@@ -3670,6 +3795,56 @@ const server = createServer(async (request, response) => {
       }
 
       console.log(`❌ Evidencia ${evidenciaId} rechazada`);
+
+      // Send email to responsable interno (non-blocking)
+      if (evidenciaPreResult.rowCount > 0) {
+        const evidencia = evidenciaPreResult.rows[0];
+
+        if (evidencia.acuerdo_id) {
+          // Fire and forget - don't wait for email to complete
+          (async () => {
+            try {
+              const acuerdoResult = await pool.query(
+                `SELECT nombre, responsable_correo FROM acuerdos WHERE id = $1`,
+                [evidencia.acuerdo_id]
+              );
+
+              if (acuerdoResult.rowCount > 0) {
+                const acuerdo = acuerdoResult.rows[0];
+
+                if (acuerdo.responsable_correo) {
+                  await sendEvidenciaResultadoEmail(
+                    { nombre: 'Responsable Interno', email: acuerdo.responsable_correo },
+                    {
+                      titulo: evidencia.titulo,
+                      acuerdoNombre: acuerdo.nombre,
+                      compromisoDatos: evidencia.entregable || 'Sin especificar',
+                    },
+                    'rechazada'
+                  );
+
+                  // Log notificación
+                  await pool.query(
+                    `INSERT INTO notificacion_logs (id, entity_type, entity_id, recipient_email, recipient_name, message)
+                     VALUES ($1, $2, $3, $4, $5, $6)`,
+                    [
+                      randomUUID(),
+                      'evidencia',
+                      evidenciaId,
+                      acuerdo.responsable_correo,
+                      'Responsable Interno',
+                      `Notificación: Evidencia rechazada - ${evidencia.titulo}`,
+                    ]
+                  );
+                }
+              }
+            } catch (emailError) {
+              console.error('❌ Error enviando notificación de rechazo:', emailError);
+            }
+          })();
+        }
+      }
+
       sendJson(response, 200, result.rows[0]);
       return;
     } catch (error) {

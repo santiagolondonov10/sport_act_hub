@@ -267,3 +267,82 @@ export async function sendEvidenciaAprobacionEmail(
     return false;
   }
 }
+
+export async function sendEvidenciaResultadoEmail(
+  responsableInterno: { nombre: string; email: string },
+  evidencia: { titulo: string; acuerdoNombre: string; compromisoDatos: string },
+  resultado: 'aprobada' | 'rechazada',
+) {
+  try {
+    const destinatario = responsableInterno.email;
+
+    if (!destinatario) {
+      console.error('❌ Email del responsable interno vacío');
+      return false;
+    }
+
+    const esAprobada = resultado === 'aprobada';
+    const iconoEstado = esAprobada ? '✅' : '❌';
+    const textoEstado = esAprobada ? 'Aprobada' : 'Rechazada';
+    const colorEstado = esAprobada ? '#12a150' : '#dc2626';
+
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;">
+        <div style="background-color: white; border-radius: 8px; padding: 30px; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333; border-bottom: 2px solid ${colorEstado}; padding-bottom: 10px;">
+            ${iconoEstado} Evidencia ${textoEstado}
+          </h2>
+          <p style="color: #666; font-size: 14px; line-height: 1.6;">
+            Estimados,<br/><br/>
+            Le informamos que la marca ha ${esAprobada ? 'aprobado' : 'rechazado'} la siguiente evidencia:
+          </p>
+
+          <div style="background-color: #f9f9f9; border-left: 4px solid ${colorEstado}; padding: 15px; margin: 20px 0;">
+            <p style="margin: 5px 0;"><strong>Acuerdo:</strong> ${evidencia.acuerdoNombre}</p>
+            <p style="margin: 5px 0;"><strong>Compromiso:</strong> ${evidencia.compromisoDatos}</p>
+            <p style="margin: 5px 0;"><strong>Evidencia:</strong> ${evidencia.titulo}</p>
+            <p style="margin: 5px 0;"><strong>Estado:</strong> <span style="color: ${colorEstado}; font-weight: bold;">${textoEstado}</span></p>
+          </div>
+
+          <p style="color: #666; font-size: 14px; line-height: 1.6;">
+            ${esAprobada
+              ? 'La marca ha validado y aprobado esta entrega. Por favor, proceda con los siguientes compromisos.'
+              : 'La marca ha rechazado esta entrega. Por favor, verifique la observación en el sistema y reenvíe la evidencia corregida.'}
+          </p>
+
+          <p style="color: #999; font-size: 12px; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 20px;">
+            Sports Act Hub<br/>
+            info@sportsact.co
+          </p>
+        </div>
+      </div>
+    `;
+
+    const transporter = nodemailer.createTransport({
+      host: process.env.EMAIL_HOST,
+      port: Number(process.env.EMAIL_PORT || 587),
+      secure: false,
+      requireTLS: true,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD,
+      },
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || 'info@sportsact.co',
+      to: destinatario,
+      subject: `${textoEstado}: Evidencia - ${evidencia.titulo}`,
+      html: htmlContent,
+    };
+
+    console.log(`📧 Enviando notificación de evidencia ${resultado} a ${destinatario}`);
+    const result = await transporter.sendMail(mailOptions);
+
+    console.log(`✅ Email de notificación enviado exitosamente a ${destinatario}`);
+    return true;
+  } catch (error) {
+    console.error(`❌ Error enviando email de evidencia ${resultado}:`, error);
+    return false;
+  }
+}
