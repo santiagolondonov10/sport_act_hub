@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { authHeaders, getSessionUser } from '@/lib/auth';
+import { apiCall } from '@/lib/api-client';
 
 interface DashboardStats {
   valorPipeline: number;
@@ -43,7 +44,7 @@ export function useDashboardStats() {
           if (value) headers.set(key, value);
         });
 
-        const response = await fetch('/api/dashboard/stats', { headers });
+        const response = await apiCall('/api/dashboard/stats', { headers });
         if (response.ok) {
           const data = await response.json();
           setStats(data);

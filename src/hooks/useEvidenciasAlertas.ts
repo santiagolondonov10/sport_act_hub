@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { authHeaders, getSessionUser } from '@/lib/auth';
+import { apiCall } from '@/lib/api-client';
 
 export interface AlertaEvidencia {
   id: string;
@@ -45,7 +46,7 @@ export function useEvidenciasAlertas() {
           if (value) headers.set(key, value);
         });
 
-        const response = await fetch('/api/evidencias-alertas', { headers });
+        const response = await apiCall('/api/evidencias-alertas', { headers });
         if (response.ok) {
           const data = await response.json();
           setAlertas(data);

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { authHeaders } from '@/lib/auth';
+import { apiCall } from '@/lib/api-client';
 
 export function useAssistant() {
   const [cargando, setCargando] = useState(false);
@@ -17,7 +18,7 @@ export function useAssistant() {
         if (value) headers.set(key, value);
       });
 
-      const response = await fetch('/api/asistente/pregunta', {
+      const response = await apiCall('/api/asistente/pregunta', {
         method: 'POST',
         headers,
         body: JSON.stringify({ pregunta }),
@@ -51,7 +52,7 @@ export function useAssistant() {
         if (value) headers.set(key, value);
       });
 
-      const response = await fetch('/api/asistente/generar-reporte', {
+      const response = await apiCall('/api/asistente/generar-reporte', {
         method: 'POST',
         headers,
         body: JSON.stringify({ tipo }),

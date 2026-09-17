@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { formatCurrency, formatNumber } from '@/lib/formatters';
 import { CATEGORIAS_ACTIVO } from '@/types';
 import { authHeaders, getSessionUser } from '@/lib/auth';
+import { apiCall } from '@/lib/api-client';
 import { ActivoMarketplaceCard } from '../components/ActivoMarketplaceCard';
 import type { Activo } from '@/types';
 
@@ -45,7 +46,7 @@ export function MarketplacePage() {
         // No incluir x-compania-id para obtener activos de todas las compañías
         headers.delete('x-compania-id');
 
-        const response = await fetch(`/api/activos`, { headers });
+        const response = await apiCall(`/api/activos`, { headers });
         if (response.ok) {
           const data = await response.json();
 
@@ -63,7 +64,7 @@ export function MarketplacePage() {
                 Object.entries(auth).forEach(([key, value]) => {
                   if (value) compHeaders.set(key, value);
                 });
-                const compResponse = await fetch(`/api/admin/companias/${companiaId}`, { headers: compHeaders });
+                const compResponse = await apiCall(`/api/admin/companias/${companiaId}`, { headers: compHeaders });
                 if (compResponse.ok) {
                   const compData = await compResponse.json();
                   companias.set(companiaId, compData);
@@ -499,7 +500,7 @@ function ActivoDetalleModal({ activo, companiaId, onCerrar }: { activo: any; com
         if (value) headers.set(key, value);
       });
 
-      const response = await fetch('/api/marketplace/interes', {
+      const response = await apiCall('/api/marketplace/interes', {
         method: 'POST',
         headers,
         body: JSON.stringify({

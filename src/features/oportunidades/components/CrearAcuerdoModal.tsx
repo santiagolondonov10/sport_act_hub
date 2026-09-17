@@ -5,6 +5,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import type { Acuerdo } from '@/types/acuerdo';
 import type { Compromiso, CategoriaCompromiso } from '@/types';
 import { authHeaders, getSessionUser } from '@/lib/auth';
+import { apiCall } from '@/lib/api-client';
 import { useToast } from '@/hooks/useToast';
 import { useMarcas } from '@/features/marcas/store';
 import { useActivos } from '@/features/activos/store';
@@ -71,7 +72,7 @@ export function CrearAcuerdoModal({ abierto, onCerrar, oportunidadId, marcaId, a
             Object.entries(auth).forEach(([key, value]) => {
               if (value) headers.set(key, value);
             });
-            const response = await fetch(`/api/admin/companias/${sessionUser.companiaId}`, { headers });
+            const response = await apiCall(`/api/admin/companias/${sessionUser.companiaId}`, { headers });
             if (response.ok) {
               const data = await response.json();
               setCompaniaNombre(data.nombre || '');
@@ -193,7 +194,7 @@ export function CrearAcuerdoModal({ abierto, onCerrar, oportunidadId, marcaId, a
         activosIncluidosIds: activosSeleccionados,
       };
 
-      const responseAcuerdo = await fetch('/api/acuerdos', {
+      const responseAcuerdo = await apiCall('/api/acuerdos', {
         method: 'POST',
         headers,
         body: JSON.stringify(acuerdoPayload),
@@ -221,7 +222,7 @@ export function CrearAcuerdoModal({ abierto, onCerrar, oportunidadId, marcaId, a
           observaciones: '',
         };
 
-        const responseCompromiso = await fetch('/api/compromisos', {
+        const responseCompromiso = await apiCall('/api/compromisos', {
           method: 'POST',
           headers,
           body: JSON.stringify(compromisoPayload),

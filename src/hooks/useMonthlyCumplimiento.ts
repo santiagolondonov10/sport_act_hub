@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { authHeaders, getSessionUser } from '@/lib/auth';
+import { apiCall } from '@/lib/api-client';
 
 export interface CumplimientoMensual {
   mes: string;
@@ -38,7 +39,7 @@ export function useMonthlyCumplimiento() {
           if (value) headers.set(key, value);
         });
 
-        const response = await fetch('/api/dashboard/cumplimiento-mensual', { headers });
+        const response = await apiCall('/api/dashboard/cumplimiento-mensual', { headers });
         if (response.ok) {
           const data = await response.json();
           setData(data);

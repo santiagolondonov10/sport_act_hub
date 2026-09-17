@@ -13,6 +13,7 @@ import { formatCurrency, formatNumber } from '@/lib/formatters';
 import { useActivos } from '../store';
 import { useToast } from '@/hooks/useToast';
 import { getSessionUser, authHeaders } from '@/lib/auth';
+import { apiCall } from '@/lib/api-client';
 import { ActivoFormModal } from '../components/ActivoFormModal';
 import { ActivoCard } from '../components/ActivoCard';
 import { FotoPreviewModal } from '../components/FotoPreviewModal';
@@ -43,7 +44,7 @@ export function ActivosListPage() {
       Object.entries(auth).forEach(([key, value]) => {
         if (value) headers.set(key, value);
       });
-      fetch(`/api/admin/companias/${sessionUser.companiaId}`, { headers })
+      apiCall(`/api/admin/companias/${sessionUser.companiaId}`, { headers })
         .then((res) => res.json())
         .then((data: any) => setCompaniaNombre(data.nombre || ''))
         .catch(() => setCompaniaNombre(''));
@@ -56,7 +57,7 @@ export function ActivosListPage() {
     Object.entries(auth).forEach(([key, value]) => {
       if (value) headers.set(key, value);
     });
-    fetch('/api/activo-categorias', { headers })
+    apiCall('/api/activo-categorias', { headers })
       .then((res) => res.json())
       .then((data: any) => setCategoriasDisponibles(data))
       .catch(() => setCategoriasDisponibles([]));

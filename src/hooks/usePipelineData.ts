@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { authHeaders, getSessionUser } from '@/lib/auth';
+import { apiCall } from '@/lib/api-client';
 
 export interface PipelineEtapa {
   etapa: string;
@@ -39,7 +40,7 @@ export function usePipelineData() {
           if (value) headers.set(key, value);
         });
 
-        const response = await fetch('/api/dashboard/pipeline-por-etapa', { headers });
+        const response = await apiCall('/api/dashboard/pipeline-por-etapa', { headers });
         if (response.ok) {
           const data = await response.json();
           console.log('Pipeline data from backend:', data);

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useMarcas } from '../store';
 import { useToast } from '@/hooks/useToast';
+import { apiCall } from '@/lib/api-client';
 import { MarcaFormModal } from '../components/MarcaFormModal';
 import { authHeaders } from '@/lib/auth';
 
@@ -89,7 +90,7 @@ export function MarcasListPage() {
   useEffect(() => {
     const cargarSectores = async () => {
       try {
-        const response = await fetch(`/api/sectores`);
+        const response = await apiCall(`/api/sectores`);
         if (response.ok) {
           const data = await response.json();
           setSectores(data);
@@ -138,7 +139,7 @@ export function MarcasListPage() {
       Object.entries(auth).forEach(([key, value]) => {
         if (value) headers.set(key, value);
       });
-      const response = await fetch('/api/marcas/todas', { headers });
+      const response = await apiCall('/api/marcas/todas', { headers });
       if (response.ok) {
         const data = await response.json();
         setMarcasGlobales(data);
@@ -294,7 +295,7 @@ export function MarcasListPage() {
                               Object.entries(auth).forEach(([key, value]) => {
                                 if (value) headers.set(key, value);
                               });
-                              const response = await fetch(`/api/marcas/${marca.id}/rut`, { headers });
+                              const response = await apiCall(`/api/marcas/${marca.id}/rut`, { headers });
                               if (!response.ok) {
                                 mostrarToast('Error al visualizar el archivo');
                                 return;
@@ -320,7 +321,7 @@ export function MarcasListPage() {
                               Object.entries(auth).forEach(([key, value]) => {
                                 if (value) headers.set(key, value);
                               });
-                              const response = await fetch(`/api/marcas/${marca.id}/rut`, { headers });
+                              const response = await apiCall(`/api/marcas/${marca.id}/rut`, { headers });
                               if (!response.ok) {
                                 mostrarToast('Error al descargar el archivo');
                                 return;

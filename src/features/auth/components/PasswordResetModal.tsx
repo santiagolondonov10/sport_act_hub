@@ -4,6 +4,7 @@ import { Modal } from '@/components/ui/Modal';
 import { TextField } from '@/components/ui/Field';
 import { Button } from '@/components/ui/Button';
 import { resetPassword } from '@/lib/auth';
+import { apiCall } from '@/lib/api-client';
 import { useToast } from '@/hooks/useToast';
 import { useLanguage } from '@/lib/LanguageContext';
 
@@ -46,7 +47,7 @@ export function PasswordResetModal({ abierto, onCerrar }: PasswordResetModalProp
     setError('');
     setLoading(true);
     try {
-      const response = await fetch('/api/auth/request-password-reset', {
+      const response = await apiCall('/api/auth/request-password-reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identifier }),

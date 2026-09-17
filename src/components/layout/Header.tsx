@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/useToast';
 import { useLanguage, type Language } from '@/lib/LanguageContext';
 import { useAdminCompanyCheck } from '@/hooks/useAdminCompanyCheck';
 import { clearSession, getSessionUser } from '@/lib/auth';
+import { apiCall } from '@/lib/api-client';
 import { AccountSettingsModal } from './AccountSettingsModal';
 
 interface HeaderProps {
@@ -72,7 +73,7 @@ export function Header({ onAbrirMenu }: HeaderProps) {
       } else if (sessionUser?.username) {
         headers.set('x-user-id', sessionUser.username);
       }
-      const response = await fetch('/api/companias', { headers });
+      const response = await apiCall('/api/companias', { headers });
       if (response.ok) {
         const data = await response.json();
         setCompanias(data);

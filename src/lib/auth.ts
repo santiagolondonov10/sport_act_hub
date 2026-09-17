@@ -1,3 +1,5 @@
+import { apiCall } from '@/lib/api-client';
+
 export interface AuthUser {
   id: string;
   email: string | null;
@@ -49,7 +51,7 @@ export function clearSession() {
 }
 
 export async function login(identifier: string, password: string): Promise<AuthUser> {
-  const response = await fetch('/api/auth/login', {
+  const response = await apiCall('/api/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ identifier, password }),
@@ -66,7 +68,7 @@ export async function login(identifier: string, password: string): Promise<AuthU
 }
 
 export async function register(email: string, username: string, password: string): Promise<AuthUser> {
-  const response = await fetch('/api/auth/register', {
+  const response = await apiCall('/api/auth/register', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, username, password }),
@@ -83,7 +85,7 @@ export async function register(email: string, username: string, password: string
 }
 
 export async function requestPasswordReset(identifier: string): Promise<string> {
-  const response = await fetch('/api/auth/request-password-reset', {
+  const response = await apiCall('/api/auth/request-password-reset', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ identifier }),
@@ -99,7 +101,7 @@ export async function requestPasswordReset(identifier: string): Promise<string> 
 }
 
 export async function resetPassword(identifier: string, resetToken: string, newPassword: string): Promise<void> {
-  const response = await fetch('/api/auth/reset-password', {
+  const response = await apiCall('/api/auth/reset-password', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ identifier, resetToken, newPassword }),
@@ -117,7 +119,7 @@ export async function changePassword(currentPassword: string, newPassword: strin
   const headers = new Headers();
   headers.set('Content-Type', 'application/json');
   Object.entries(authHeaders()).forEach(([key, value]) => headers.set(key, value));
-  const response = await fetch('/api/auth/change-password', {
+  const response = await apiCall('/api/auth/change-password', {
     method: 'POST',
     headers,
     body: JSON.stringify({ currentPassword, newPassword }),
