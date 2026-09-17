@@ -163,6 +163,14 @@ export function CrearAcuerdoModal({ abierto, onCerrar, oportunidadId, marcaId, a
       mostrarToast('La fecha de fin es requerida.');
       return;
     }
+    if (formularioAcuerdo.fechaFin < formularioAcuerdo.fechaInicio) {
+      mostrarToast('La fecha de fin debe ser igual o posterior a la fecha de inicio.');
+      return;
+    }
+    if (formularioAcuerdo.valorCOP <= 0) {
+      mostrarToast('El valor del acuerdo debe ser mayor a 0.');
+      return;
+    }
     if (compromisos.length === 0) {
       mostrarToast('Debes crear al menos un compromiso para guardar el acuerdo.');
       return;

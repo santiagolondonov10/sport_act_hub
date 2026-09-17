@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Pencil, Download, Eye, Settings, Download as DownloadIcon } from 'lucide-react';
+import { Plus, Trash2, Pencil, Download, Eye, Settings, Download as DownloadIcon, Upload } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -7,6 +7,7 @@ import { useMarcas } from '../store';
 import { useToast } from '@/hooks/useToast';
 import { apiCall } from '@/lib/api-client';
 import { MarcaFormModal } from '../components/MarcaFormModal';
+import { BulkUploadMarcasModal } from '../components/BulkUploadMarcasModal';
 import { authHeaders } from '@/lib/auth';
 
 interface Sector {
@@ -66,6 +67,7 @@ export function MarcasListPage() {
   const [marcaSeleccionada, setMarcaSeleccionada] = useState<any | null>(null);
   const [importando, setImportando] = useState(false);
   const [busquedaMarcas, setBusquedaMarcas] = useState('');
+  const [modalCargaMasivaAbierto, setModalCargaMasivaAbierto] = useState(false);
 
   // Cargar configuración de columnas desde localStorage
   useEffect(() => {
@@ -180,6 +182,9 @@ export function MarcasListPage() {
         descripcion="Directorio de marcas y patrocinadores potenciales."
         accion={
           <div className="flex gap-2">
+            <Button variante="secundario" icono={<Upload size={16} />} onClick={() => setModalCargaMasivaAbierto(true)}>
+              Carga masiva
+            </Button>
             <Button variante="secundario" icono={<DownloadIcon size={16} />} onClick={handleAbrirModalImportar}>
               Consultar marcas creadas
             </Button>
@@ -491,6 +496,11 @@ export function MarcasListPage() {
         abierto={modalAbierto}
         onCerrar={() => setModalAbierto(false)}
         marcaId={marcaParaEditar}
+      />
+
+      <BulkUploadMarcasModal
+        abierto={modalCargaMasivaAbierto}
+        onCerrar={() => setModalCargaMasivaAbierto(false)}
       />
     </div>
   );
