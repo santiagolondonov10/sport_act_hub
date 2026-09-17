@@ -346,3 +346,91 @@ export async function sendEvidenciaResultadoEmail(
     return false;
   }
 }
+
+export async function sendMarketplaceInteresEmail(
+  destinatarios: Array<{ email: string; nombre?: string }>,
+  interesado: { email: string; nombre?: string },
+  activo: { nombre: string; descripcion: string; valoracionCOP: number; categoriaId: string; canal: string },
+  compania: { nombre: string }
+) {
+  try {
+    if (!destinatarios || destinatarios.length === 0) {
+      console.error('❌ No hay destinatarios configurados');
+      return false;
+    }
+
+    const emailsDestino = destinatarios.map(d => d.email).join(', ');
+
+    function formatCurrency(value: number): string {
+      const num = Math.round(Number(value));
+      return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;">
+        <div style="background-color: white; border-radius: 8px; padding: 30px; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333; border-bottom: 2px solid #0066cc; padding-bottom: 10px;">
+            🎯 Nuevo Interés en Activo Comercial
+          </h2>
+          <p style="color: #666; font-size: 14px; line-height: 1.6;">
+            Estimados,<br/><br/>
+            Un potencial cliente ha expresado interés en uno de vuestros activos comerciales. A continuación encontraréis los detalles:
+          </p>
+
+          <div style="background-color: #f0f7ff; border-left: 4px solid #0066cc; padding: 15px; margin: 20px 0;">
+            <p style="margin: 5px 0;"><strong>Interesado:</strong> ${interesado.email}</p>
+            ${interesado.nombre ? `<p style="margin: 5px 0;"><strong>Nombre:</strong> ${interesado.nombre}</p>` : ''}
+          </div>
+
+          <div style="background-color: #f9f9f9; border: 1px solid #ddd; padding: 15px; margin: 20px 0; border-radius: 6px;">
+            <h3 style="color: #333; margin-top: 0; margin-bottom: 10px;">📦 Activo de Interés</h3>
+            <p style="margin: 5px 0;"><strong>Nombre:</strong> ${activo.nombre}</p>
+            <p style="margin: 5px 0;"><strong>Categoría:</strong> ${activo.categoriaId}</p>
+            <p style="margin: 5px 0;"><strong>Canal:</strong> ${activo.canal}</p>
+            <p style="margin: 5px 0;"><strong>Valoración:</strong> $ ${formatCurrency(activo.valoracionCOP)}</p>
+            ${activo.descripcion ? `<p style="margin: 5px 0;"><strong>Descripción:</strong> ${activo.descripcion}</p>` : ''}
+          </div>
+
+          <p style="color: #666; font-size: 14px; line-height: 1.6;">
+            <strong>Próximos pasos recomendados:</strong><br/>
+            1. Contactar al interesado para conocer sus necesidades específicas<br/>
+            2. Presentar una propuesta comercial personalizada<br/>
+            3. Iniciar el proceso de relacionamiento y negociación<br/>
+          </p>
+
+          <p style="color: #999; font-size: 12px; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 20px;">
+            Sports Act Hub<br/>
+            info@sportsact.co
+          </p>
+        </div>
+      </div>
+    `;
+
+    const transporter = nodemailer.createTransport({
+      host: process.env.EMAIL_HOST,
+      port: Number(process.env.EMAIL_PORT || 587),
+      secure: false,
+      requireTLS: true,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD,
+      },
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || 'info@sportsact.co',
+      to: emailsDestino,
+      subject: `🎯 Nuevo Interés - ${activo.nombre} (${compania.nombre})`,
+      html: htmlContent,
+    };
+
+    console.log(`📧 Enviando notificación de interés en marketplace a ${emailsDestino}`);
+    const result = await transporter.sendMail(mailOptions);
+
+    console.log(`✅ Email de interés enviado exitosamente a ${destinatarios.length} destinatario(s)`);
+    return true;
+  } catch (error) {
+    console.error('❌ Error enviando email de interés en marketplace:', error);
+    return false;
+  }
+}

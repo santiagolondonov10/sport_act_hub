@@ -6,7 +6,7 @@ import { FilterSelect } from '@/components/shared/FilterSelect';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { formatCurrency, formatNumber } from '@/lib/formatters';
 import { CATEGORIAS_ACTIVO } from '@/types';
-import { authHeaders } from '@/lib/auth';
+import { authHeaders, getSessionUser } from '@/lib/auth';
 import { ActivoMarketplaceCard } from '../components/ActivoMarketplaceCard';
 import type { Activo } from '@/types';
 
@@ -261,7 +261,8 @@ export function MarketplacePage() {
 
       {seleccionado && (
         <ActivoDetalleModal
-          activo={seleccionado}
+          activo={seleccionado as any}
+          companiaId={(seleccionado as any).compania_id || (seleccionado as any).company_id || (seleccionado as any).companiaId || ''}
           onCerrar={() => setSeleccionado(null)}
         />
       )}
@@ -476,7 +477,53 @@ function VistaValoracion({ activos, onSeleccionar }: { activos: any[]; onSelecci
   );
 }
 
-function ActivoDetalleModal({ activo, onCerrar }: { activo: Activo; onCerrar: () => void }) {
+function ActivoDetalleModal({ activo, companiaId, onCerrar }: { activo: any; companiaId: string; onCerrar: () => void }) {
+  const [enviandoInteres, setEnviandoInteres] = useState(false);
+  const [mensajeInteres, setMensajeInteres] = useState<{ tipo: 'exito' | 'error'; texto: string } | null>(null);
+
+  const handleEstoyInteresado = async () => {
+    try {
+      setEnviandoInteres(true);
+      setMensajeInteres(null);
+
+      const user = getSessionUser();
+      if (!user || !user.email) {
+        setMensajeInteres({ tipo: 'error', texto: 'Debes estar autenticado para expresar interés.' });
+        setEnviandoInteres(false);
+        return;
+      }
+
+      const headers = new Headers();
+      headers.set('Content-Type', 'application/json');
+      Object.entries(authHeaders()).forEach(([key, value]) => {
+        if (value) headers.set(key, value);
+      });
+
+      const response = await fetch('/api/marketplace/interes', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          activoId: activo.id,
+          companiaId: companiaId,
+          interesadoEmail: user.email,
+          interesadoNombre: user.username || user.email,
+        }),
+      });
+
+      if (response.ok) {
+        setMensajeInteres({ tipo: 'exito', texto: '¡Interés registrado! El equipo de la compañía se contactará contigo pronto.' });
+        setTimeout(() => onCerrar(), 2000);
+      } else {
+        const error = await response.json();
+        setMensajeInteres({ tipo: 'error', texto: error.error || 'No fue posible registrar tu interés.' });
+      }
+    } catch (error) {
+      setMensajeInteres({ tipo: 'error', texto: 'Error al registrar tu interés. Por favor, intenta de nuevo.' });
+    } finally {
+      setEnviandoInteres(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={onCerrar}>
       <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
@@ -531,6 +578,33 @@ function ActivoDetalleModal({ activo, onCerrar }: { activo: Activo; onCerrar: ()
             <p className="text-xs font-medium text-gray-500 uppercase mb-2">Alcance Estimado</p>
             <p className="text-sm font-semibold text-gray-900">{formatNumber(activo.alcanceEstimado || 0)} personas</p>
           </div>
+
+          {mensajeInteres && (
+            <div
+              className={`p-4 rounded-lg ${
+                mensajeInteres.tipo === 'exito'
+                  ? 'bg-green-50 border border-green-200 text-green-800'
+                  : 'bg-red-50 border border-red-200 text-red-800'
+              }`}
+            >
+              <p className="text-sm font-medium">{mensajeInteres.texto}</p>
+            </div>
+          )}
+
+          <button
+            onClick={handleEstoyInteresado}
+            disabled={enviandoInteres}
+            className="w-full bg-gradient-to-r from-brand-600 to-brand-700 hover:from-brand-700 hover:to-brand-800 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200"
+          >
+            {enviandoInteres ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Registrando interés...
+              </span>
+            ) : (
+              '🎯 Estoy Interesado'
+            )}
+          </button>
         </div>
       </div>
     </div>

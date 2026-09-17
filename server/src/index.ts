@@ -8,7 +8,7 @@ import { config } from 'dotenv';
 import * as XLSX from 'xlsx';
 import cron from 'node-cron';
 import { pool } from './db.js';
-import { sendOportunidadStatusEmail, sendAcuerdoProximoAVencerEmail, sendEvidenciaAprobacionEmail, sendEvidenciaResultadoEmail } from './emailService.js';
+import { sendOportunidadStatusEmail, sendAcuerdoProximoAVencerEmail, sendEvidenciaAprobacionEmail, sendEvidenciaResultadoEmail, sendMarketplaceInteresEmail } from './emailService.js';
 
 // Load environment variables from .env file
 config();
@@ -3941,6 +3941,100 @@ const server = createServer(async (request, response) => {
     } catch (error) {
       console.error('Error requesting revision:', error);
       sendJson(response, 500, { error: 'No fue posible solicitar la revisión.' });
+      return;
+    }
+  }
+
+  // POST /api/marketplace/interes - Report interest in commercial asset
+  if (request.method === 'POST' && request.url === '/api/marketplace/interes') {
+    try {
+      const body = await readJson(request) as any;
+      const { activoId, companiaId, interesadoEmail, interesadoNombre } = body;
+
+      if (!activoId || !companiaId || !interesadoEmail) {
+        sendJson(response, 400, { error: 'Faltan parámetros requeridos.' });
+        return;
+      }
+
+      // Get activo data
+      const activoResult = await pool.query(
+        `SELECT id, nombre, descripcion, categoria_id, canal, valoracion_cop FROM activos WHERE id = $1 AND compania_id = $2`,
+        [activoId, companiaId]
+      );
+
+      if (activoResult.rowCount === 0) {
+        sendJson(response, 404, { error: 'Activo no encontrado.' });
+        return;
+      }
+
+      const activo = activoResult.rows[0];
+
+      // Get compañía data
+      const companiaResult = await pool.query(
+        `SELECT id, nombre FROM companias WHERE id = $1`,
+        [companiaId]
+      );
+
+      if (companiaResult.rowCount === 0) {
+        sendJson(response, 404, { error: 'Compañía no encontrada.' });
+        return;
+      }
+
+      const compania = companiaResult.rows[0];
+
+      // Get all users assigned to this company
+      const usuariosResult = await pool.query(
+        `SELECT DISTINCT email FROM auth_credentials WHERE compania_id = $1 AND email IS NOT NULL AND email != ''`,
+        [companiaId]
+      );
+
+      const destinatarios = usuariosResult.rows.map(row => ({ email: row.email }));
+
+      if (destinatarios.length === 0) {
+        sendJson(response, 400, { error: 'No hay usuarios configurados en esta compañía.' });
+        return;
+      }
+
+      // Send email (fire and forget - non-blocking)
+      (async () => {
+        try {
+          await sendMarketplaceInteresEmail(
+            destinatarios,
+            { email: interesadoEmail, nombre: interesadoNombre },
+            {
+              nombre: activo.nombre,
+              descripcion: activo.descripcion,
+              valoracionCOP: activo.valoracion_cop || 0,
+              categoriaId: activo.categoria_id || 'Sin categoría',
+              canal: activo.canal || 'No especificado'
+            },
+            { nombre: compania.nombre }
+          );
+
+          // Log notificación
+          await pool.query(
+            `INSERT INTO notificacion_logs (id, entity_type, entity_id, recipient_email, recipient_name, message)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [
+              randomUUID(),
+              'marketplace_interes',
+              activoId,
+              destinatarios.map(d => d.email).join(', '),
+              'Equipo de Compañía',
+              `Nuevo interés en ${activo.nombre} de ${interesadoEmail}`,
+            ]
+          );
+        } catch (emailError) {
+          console.error('❌ Error enviando notificación de interés en marketplace:', emailError);
+        }
+      })();
+
+      console.log(`🎯 Interés registrado en marketplace para ${activoId}`);
+      sendJson(response, 200, { success: true, message: 'Interés registrado correctamente. El equipo de la compañía será contactado.' });
+      return;
+    } catch (error) {
+      console.error('Error registering marketplace interest:', error);
+      sendJson(response, 500, { error: 'No fue posible registrar el interés.' });
       return;
     }
   }
