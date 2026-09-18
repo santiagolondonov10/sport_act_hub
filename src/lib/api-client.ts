@@ -11,13 +11,13 @@ export function getBackendUrl(): string {
     return '';
   }
 
-  // En DevTunnel o production, usar la URL del backend directamente
+  // En DevTunnel, usar la URL del backend directamente
   if (hostname.includes('w3fszsbv')) {
     return 'https://w3fszsbv-3001.use2.devtunnels.ms';
   }
 
-  // Default: usar localhost
-  return 'http://localhost:3001';
+  // En producción (IP o dominio), usar el proxy local (/api)
+  return '';
 }
 
 export async function apiCall(endpoint: string, options?: RequestInit): Promise<Response> {
