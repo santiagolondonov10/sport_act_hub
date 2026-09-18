@@ -3958,7 +3958,10 @@ const server = createServer(async (request, response) => {
 
       // Get activo data
       const activoResult = await pool.query(
-        `SELECT id, nombre, descripcion, categoria_id, canal, valoracion_cop FROM activos WHERE id = $1 AND compania_id = $2`,
+        `SELECT a.id, a.nombre, a.descripcion, a.categoria_id, a.canal, a.valoracion_cop, ac.nombre AS categoria_nombre
+         FROM activos a
+         LEFT JOIN activo_categorias ac ON a.categoria_id = ac.id
+         WHERE a.id = $1 AND a.compania_id = $2`,
         [activoId, companiaId]
       );
 
@@ -4005,7 +4008,7 @@ const server = createServer(async (request, response) => {
               nombre: activo.nombre,
               descripcion: activo.descripcion,
               valoracionCOP: activo.valoracion_cop || 0,
-              categoriaId: activo.categoria_id || 'Sin categoría',
+              categoriaId: activo.categoria_nombre || 'Sin categoría',
               canal: activo.canal || 'No especificado'
             },
             { nombre: compania.nombre }
@@ -4365,6 +4368,47 @@ Responde a la siguiente pregunta en español de forma clara y concisa:
       sendJson(response, 500, { error: 'Error procesando callback' });
     }
     return;
+  }
+
+  // DELETE /api/evidencias/:id - Delete an evidencia
+  const evidenciaDeleteMatch = request.url?.match(/^\/api\/evidencias\/([^/]+)$/);
+  if (request.method === 'DELETE' && evidenciaDeleteMatch) {
+    try {
+      const userId = request.headers['x-user-id'];
+      if (typeof userId !== 'string' || !userId) {
+        sendJson(response, 401, { error: 'Se requiere autenticación.' });
+        return;
+      }
+      const overrideCompaniaId = getCompaniaIdFromRequest(request);
+      const companiaId = await getUserCompaniaId(userId, overrideCompaniaId);
+      if (!companiaId) {
+        sendJson(response, 403, { error: 'Usuario sin compañía asignada.' });
+        return;
+      }
+
+      const evidenciaId = decodeURIComponent(evidenciaDeleteMatch[1]);
+
+      // Check that the evidencia belongs to this company
+      const checkResult = await pool.query(
+        `SELECT id FROM evidencias WHERE id = $1 AND compania_id = $2`,
+        [evidenciaId, companiaId]
+      );
+
+      if (checkResult.rows.length === 0) {
+        sendJson(response, 404, { error: 'Evidencia no encontrada.' });
+        return;
+      }
+
+      // Delete the evidencia
+      await pool.query(`DELETE FROM evidencias WHERE id = $1`, [evidenciaId]);
+
+      sendJson(response, 200, { message: 'Evidencia eliminada correctamente.' });
+      return;
+    } catch (error) {
+      console.error('Error deleting evidencia:', error instanceof Error ? error.message : error);
+      sendJson(response, 500, { error: 'No fue posible eliminar la evidencia.' });
+      return;
+    }
   }
 
   // GET /api/notificacion-logs/:tipo/:id - Get notification logs for an entity
